@@ -1,7 +1,8 @@
 'use client';
 
 import { Activity, AlertTriangle, Brain, Camera, Cpu as CpuIcon2, Video, WifiOff, Zap } from 'lucide-react';
-import type { InferenceInputSource, InferenceModel, InferenceStats, LoadedModel } from '@/hooks/useInference';
+import { InferenceInputSource, InferenceModel, InferenceStats, LoadedModel } from '../../hooks/useInference';
+
 
 interface InferenceFooterProps {
   selectedModelInfo: InferenceModel | undefined;
