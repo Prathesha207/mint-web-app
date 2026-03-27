@@ -371,7 +371,7 @@ export default function LandingPage() {
                 onClick={() => window.open('/training', '_blank')}
                 className="px-6 py-2 bg-gradient-to-r from-blue-600 to-cyan-500 rounded-lg text-white font-semibold text-sm flex items-center space-x-2 hover:shadow-lg hover:shadow-blue-500/30"
               >
-                <span>Launch Studio</span>
+                <span>Launch Studio Training</span>
                 <ArrowRight className="w-4 h-4" />
               </motion.button>
             </div>
