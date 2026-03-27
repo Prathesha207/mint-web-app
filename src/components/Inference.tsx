@@ -273,7 +273,7 @@ export default function InferenceClientPage() {
       addTerminalLog(`📥 Starting download for model: ${selectedModelForDownload.id}`);
 
       // Construct the download URL
-      const protocol = window.location.protocol === 'https' ? 'https' : 'https';
+      const protocol = window.location.protocol === 'https:' ? 'https:' : 'https:';
       const downloadUrl = `${protocol}//${NEXT_PUBLIC_BACKEND_URL}/api/inference/models/${selectedModelForDownload.id}/download`;
 
       // Method 1: Direct download using anchor element
@@ -447,7 +447,7 @@ export default function InferenceClientPage() {
     // Poll every 200ms for smooth streaming
     const interval = setInterval(async () => {
       try {
-        const response = await fetch(`https//${NEXT_PUBLIC_BACKEND_URL}/api/remote-camera/frame/${sessionId}`);
+        const response = await fetch(`https://${NEXT_PUBLIC_BACKEND_URL}/api/remote-camera/frame/${sessionId}`);
 
         if (response.ok) {
           const data = await response.json();
@@ -501,7 +501,7 @@ export default function InferenceClientPage() {
 
     if (remoteCameraSession) {
       // Notify backend to clean up
-      fetch(`https//${NEXT_PUBLIC_BACKEND_URL}/api/remote-camera/stop/${remoteCameraSession.sessionId}`, {
+      fetch(`https://${NEXT_PUBLIC_BACKEND_URL}/api/remote-camera/stop/${remoteCameraSession.sessionId}`, {
         method: 'POST'
       }).catch(console.error);
     }
@@ -581,7 +581,7 @@ export default function InferenceClientPage() {
       formData.append('video_name', file.name);
       formData.append('start_inference', startInference.toString());
 
-      const response = await fetch(`https//${NEXT_PUBLIC_BACKEND_URL}/api/inference/upload-video-only`, {
+      const response = await fetch(`https://${NEXT_PUBLIC_BACKEND_URL}/api/inference/upload-video-only`, {
         method: 'POST',
         body: formData,
       });
@@ -671,7 +671,7 @@ export default function InferenceClientPage() {
     try {
       addTerminalLog(`🚀 Starting inference on uploaded video...`);
 
-      const response = await fetch(`https//${NEXT_PUBLIC_BACKEND_URL}/api/inference/start-video-inference/${jobId}`, {
+      const response = await fetch(`https://${NEXT_PUBLIC_BACKEND_URL}/api/inference/start-video-inference/${jobId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -719,7 +719,7 @@ export default function InferenceClientPage() {
 
   // Update the WebSocket connection to handle frame streaming
   const connectToVideoWebSocket = (jobId: string) => {
-    const protocol = window.location.protocol === 'https' ? 'wss:' : 'ws:';
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${NEXT_PUBLIC_BACKEND_URL}/api/inference/video-stream/${jobId}`;
 
     const ws = new WebSocket(wsUrl);
@@ -818,7 +818,7 @@ export default function InferenceClientPage() {
   const fetchLatestProcessedFrame = async (jobId: string) => {
     try {
       const response = await fetch(
-        `https//${NEXT_PUBLIC_BACKEND_URL}/api/inference/video-job/${jobId}/latest-frame`
+        `https://${NEXT_PUBLIC_BACKEND_URL}/api/inference/video-job/${jobId}/latest-frame`
       );
 
       if (response.ok) {
@@ -875,7 +875,7 @@ export default function InferenceClientPage() {
   const fetchProcessedFrame = async (jobId: string, frameNumber: number) => {
     try {
       const response = await fetch(
-        `https//${NEXT_PUBLIC_BACKEND_URL}/api/inference/video-job/${jobId}/frame/${frameNumber}`
+        `https://${NEXT_PUBLIC_BACKEND_URL}/api/inference/video-job/${jobId}/frame/${frameNumber}`
       );
 
       if (response.ok) {
@@ -985,7 +985,7 @@ export default function InferenceClientPage() {
     try {
       addTerminalLog('📥 Downloading processed video...');
 
-      const response = await fetch(`https//${NEXT_PUBLIC_BACKEND_URL}/api/inference/video-result/${jobId}`);
+      const response = await fetch(`https://${NEXT_PUBLIC_BACKEND_URL}/api/inference/video-result/${jobId}`);
 
       if (!response.ok) {
         throw new Error('Failed to fetch processed video');
@@ -1090,7 +1090,7 @@ export default function InferenceClientPage() {
   const cancelBackendVideoProcessing = async () => {
     if (backendVideoProcessing.jobId) {
       try {
-        await fetch(`https//${NEXT_PUBLIC_BACKEND_URL}/api/inference/video-job/${backendVideoProcessing.jobId}`, {
+        await fetch(`https://${NEXT_PUBLIC_BACKEND_URL}/api/inference/video-job/${backendVideoProcessing.jobId}`, {
           method: 'DELETE',
         });
 
@@ -1434,7 +1434,7 @@ export default function InferenceClientPage() {
       addTerminalLog('Loading available models...');
       setModelLoading(true);
 
-      const response = await fetch(`https//${NEXT_PUBLIC_BACKEND_URL}/api/inference/models`);
+      const response = await fetch(`https://${NEXT_PUBLIC_BACKEND_URL}/api/inference/models`);
       if (response.ok) {
         const data = await response.json();
         setModels(data.models || []);
@@ -1464,7 +1464,7 @@ export default function InferenceClientPage() {
 
   const fetchLoadedModels = async () => {
     try {
-      const response = await fetch(`https//${NEXT_PUBLIC_BACKEND_URL}/api/inference/models/loaded`);
+      const response = await fetch(`https://${NEXT_PUBLIC_BACKEND_URL}/api/inference/models/loaded`);
       if (response.ok) {
         const data = await response.json();
         setLoadedModels(data.models || []);
@@ -1479,7 +1479,7 @@ export default function InferenceClientPage() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-      const response = await fetch(`https//${NEXT_PUBLIC_BACKEND_URL}/api/health`, {
+      const response = await fetch(`https://${NEXT_PUBLIC_BACKEND_URL}/api/health`, {
         signal: controller.signal
       });
 
@@ -1504,7 +1504,7 @@ export default function InferenceClientPage() {
 
   const listOakDevices = async () => {
     try {
-      const response = await fetch('https//localhost:5000/api/camera/devices');
+      const response = await fetch('https://localhost:5000/api/camera/devices');
       if (response.ok) {
         const data = await response.json();
         setOakDevices(data.devices || []);
@@ -1517,7 +1517,7 @@ export default function InferenceClientPage() {
   const startOakCamera = async () => {
     try {
       addTerminalLog('Starting OAK camera...');
-      const response = await fetch('https//localhost:5000/api/camera/start', {
+      const response = await fetch('https://localhost:5000/api/camera/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
@@ -1527,7 +1527,7 @@ export default function InferenceClientPage() {
       setIsOakStreaming(true);
       setOakCameraState('streaming');
       handleInputSourceChange('oak');
-      setStreamUrl('https//localhost:5000/api/camera/stream');
+      setStreamUrl('https://localhost:5000/api/camera/stream');
       addTerminalLog('✅ OAK Camera started streaming');
 
     } catch (error) {
@@ -1539,7 +1539,7 @@ export default function InferenceClientPage() {
 
   const stopOakCamera = async () => {
     try {
-      await fetch('https//localhost:5000/api/camera/stop', { method: 'POST' });
+      await fetch('https://localhost:5000/api/camera/stop', { method: 'POST' });
       setIsOakStreaming(false);
       setOakCameraState('idle');
       setStreamUrl('');
@@ -1556,7 +1556,7 @@ export default function InferenceClientPage() {
       setModelLoading(true);
       addTerminalLog(`Loading model: ${modelId}...`);
 
-      const response = await fetch(`https//${NEXT_PUBLIC_BACKEND_URL}/api/inference/models/${modelId}/load`, {
+      const response = await fetch(`https://${NEXT_PUBLIC_BACKEND_URL}/api/inference/models/${modelId}/load`, {
         method: 'POST'
       });
 
@@ -1668,7 +1668,7 @@ export default function InferenceClientPage() {
   //     const timeoutId = setTimeout(() => controller.abort(), 30000);
 
   //     try {
-  //       const response = await fetch(`https//${NEXT_PUBLIC_BACKEND_URL}/api/inference/process`, {
+  //       const response = await fetch(`https://${NEXT_PUBLIC_BACKEND_URL}/api/inference/process`, {
   //         method: 'POST',
   //         headers: {
   //           'Content-Type': 'application/json',
@@ -1793,7 +1793,7 @@ export default function InferenceClientPage() {
       const timeoutId = setTimeout(() => controller.abort(), 30000);
 
       try {
-        const response = await fetch(`https//${NEXT_PUBLIC_BACKEND_URL}/api/inference/process`, {
+        const response = await fetch(`https://${NEXT_PUBLIC_BACKEND_URL}/api/inference/process`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1979,7 +1979,7 @@ export default function InferenceClientPage() {
     // Check if we're in a browser environment
     if (typeof window === 'undefined') return;
 
-    const protocol = window.location.protocol === 'https' ? 'wss:' : 'ws:';
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${NEXT_PUBLIC_BACKEND_URL}/api/inference/ws/${selectedModel}`;
 
     const ws = new WebSocket(wsUrl);
@@ -2046,7 +2046,7 @@ export default function InferenceClientPage() {
       addTerminalLog(`Testing inference with: ${file.name}...`);
       setIsProcessing(true);
 
-      const response = await fetch(`https//${NEXT_PUBLIC_BACKEND_URL}/api/inference/test`, {
+      const response = await fetch(`https://${NEXT_PUBLIC_BACKEND_URL}/api/inference/test`, {
         method: 'POST',
         body: formData,
       });
@@ -2127,7 +2127,7 @@ export default function InferenceClientPage() {
 
         const base64WithPrefix = `data:image/jpeg;base64,${base64Data}`;
 
-        const response = await fetch(`https//${NEXT_PUBLIC_BACKEND_URL}/api/inference/process`, {
+        const response = await fetch(`https://${NEXT_PUBLIC_BACKEND_URL}/api/inference/process`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -2226,7 +2226,7 @@ export default function InferenceClientPage() {
   // Unload model
   const unloadModel = async (modelId: string) => {
     try {
-      const response = await fetch(`https//${NEXT_PUBLIC_BACKEND_URL}/api/inference/models/${modelId}/unload`, {
+      const response = await fetch(`https://${NEXT_PUBLIC_BACKEND_URL}/api/inference/models/${modelId}/unload`, {
         method: 'POST'
       });
 

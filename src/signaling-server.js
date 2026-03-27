@@ -3,8 +3,8 @@ const wss = new WebSocket.Server({ port: 8080 });
 const connections = new Map();
 
 wss.on('connection', (ws, req) => {
-  const code = new URL(req.url, `https//${req.headers.host}`).searchParams.get('code');
-  const role = new URL(req.url, `https//${req.headers.host}`).searchParams.get('role');
+  const code = new URL(req.url, `https://${req.headers.host}`).searchParams.get('code');
+  const role = new URL(req.url, `https://${req.headers.host}`).searchParams.get('role');
 
   if (!connections.has(code)) {
     connections.set(code, { desktop: null, mobile: null });

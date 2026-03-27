@@ -1515,7 +1515,7 @@ export default function TrainingContent() {
       addTerminalLog(`Step 2: Verifying session...`);
 
       try {
-        const verifyResponse = await authFetch(`https//${NEXT_PUBLIC_BACKEND_URL}/api/sessions/${sessionName}/frame-count`);
+        const verifyResponse = await authFetch(`https://${NEXT_PUBLIC_BACKEND_URL}/api/sessions/${sessionName}/frame-count`);
         if (verifyResponse.ok) {
           const data = await verifyResponse.json();
           addTerminalLog(`✓ Session verified: ${data.total_frames || 0} frames available`);
@@ -1552,7 +1552,7 @@ export default function TrainingContent() {
         }]
         : rois;
 
-      const response = await authFetch(`https//${NEXT_PUBLIC_BACKEND_URL}/api/training/start/`, {
+      const response = await authFetch(`https://${NEXT_PUBLIC_BACKEND_URL}/api/training/start/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1610,7 +1610,7 @@ export default function TrainingContent() {
                 inferenceFormData.append('training_id', result.training_id);
                 inferenceFormData.append('frame_number', frameNumber.toString());
 
-                await authFetch(`https//${NEXT_PUBLIC_BACKEND_URL}/api/training/live-frame`, {
+                await authFetch(`https://${NEXT_PUBLIC_BACKEND_URL}/api/training/live-frame`, {
                   method: 'POST',
                   body: inferenceFormData,
                 });
@@ -1728,14 +1728,14 @@ export default function TrainingContent() {
                   const pointsArray = roi.points.map(p => [p.x, p.y]);
                   roiFormData.append('roi_points', JSON.stringify(pointsArray));
 
-                  await authFetch(`https//${NEXT_PUBLIC_BACKEND_URL}/api/training/frames/`, {
+                  await authFetch(`https://${NEXT_PUBLIC_BACKEND_URL}/api/training/frames/`, {
                     method: 'POST',
                     body: roiFormData,
                   });
                 }
               } else {
                 // Full frame mode
-                await authFetch(`https//${NEXT_PUBLIC_BACKEND_URL}/api/training/full-frame`, {
+                await authFetch(`https://${NEXT_PUBLIC_BACKEND_URL}/api/training/full-frame`, {
                   method: 'POST',
                   body: formData,
                 });
@@ -1782,7 +1782,7 @@ export default function TrainingContent() {
     // Poll every 100ms for smooth streaming
     const interval = setInterval(async () => {
       try {
-        const response = await authFetch(`https//${NEXT_PUBLIC_BACKEND_URL}/api/remote-camera/frame/${sessionId}`);
+        const response = await authFetch(`https://${NEXT_PUBLIC_BACKEND_URL}/api/remote-camera/frame/${sessionId}`);
 
         if (response.ok) {
           const data = await response.json();
@@ -1835,7 +1835,7 @@ export default function TrainingContent() {
 
     if (remoteCameraSession) {
       // Notify backend to clean up
-      authFetch(`https//${NEXT_PUBLIC_BACKEND_URL}/api/remote-camera/stop/${remoteCameraSession.sessionId}`, {
+      authFetch(`https://${NEXT_PUBLIC_BACKEND_URL}/api/remote-camera/stop/${remoteCameraSession.sessionId}`, {
         method: 'POST'
       }).catch(console.error);
     }
@@ -2686,7 +2686,7 @@ export default function TrainingContent() {
       formData.append('video_width', videoDimensions.width.toString());
       formData.append('video_height', videoDimensions.height.toString());
 
-      const response = await authFetch(`https//${NEXT_PUBLIC_BACKEND_URL}/api/training/upload-video`, {
+      const response = await authFetch(`https://${NEXT_PUBLIC_BACKEND_URL}/api/training/upload-video`, {
         method: 'POST',
         body: formData,
       });
@@ -2722,7 +2722,7 @@ export default function TrainingContent() {
     const poll = async () => {
       try {
         const response = await fetch(
-          `https//${NEXT_PUBLIC_BACKEND_URL}/api/training/extraction-status/${jobId}`
+          `https://${NEXT_PUBLIC_BACKEND_URL}/api/training/extraction-status/${jobId}`
         );
 
         if (response.ok) {
@@ -3781,7 +3781,7 @@ export default function TrainingContent() {
     formData.append('video_height', videoDimensions.height.toString());
 
     try {
-      const response = await authFetch(`https//${NEXT_PUBLIC_BACKEND_URL}/api/training/full-frame`, {
+      const response = await authFetch(`https://${NEXT_PUBLIC_BACKEND_URL}/api/training/full-frame`, {
         method: 'POST',
         body: formData,
       });
@@ -3862,7 +3862,7 @@ export default function TrainingContent() {
     }
 
     try {
-      const response = await authFetch(`https//${NEXT_PUBLIC_BACKEND_URL}/api/training/frames/`, {
+      const response = await authFetch(`https://${NEXT_PUBLIC_BACKEND_URL}/api/training/frames/`, {
         method: 'POST',
         body: formData,
       });
@@ -3887,7 +3887,7 @@ export default function TrainingContent() {
   // Training functions
   const connectToTrainingWebSocket = (trainingId: string) => {
     // Choose ws/wss based on current page protocol
-    const wsScheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    const wsScheme = window.location.protocol === 'https::' ? 'wss' : 'ws';
     const wsUrl = `${wsScheme}://${NEXT_PUBLIC_BACKEND_URL}/api/training/ws/${trainingId}`;
 
     console.log('Connecting to WebSocket:', wsUrl);
@@ -4244,7 +4244,7 @@ export default function TrainingContent() {
 
       addTerminalLog(`Step 3: Verifying saved frames...`);
       try {
-        const response = await authFetch(`https//${NEXT_PUBLIC_BACKEND_URL}/api/sessions/${sessionName}/frame-count`);
+        const response = await authFetch(`https://${NEXT_PUBLIC_BACKEND_URL}/api/sessions/${sessionName}/frame-count`);
         if (response.ok) {
           const data = await response.json();
           const totalSavedFrames = data.total_frames || 0;
@@ -4286,7 +4286,7 @@ export default function TrainingContent() {
 
       addTerminalLog(`📊  Selected Training Types: ${trainingOptions.join(", ")}`);
 
-      const response = await authFetch(`https//${NEXT_PUBLIC_BACKEND_URL}/api/training/start/`, {
+      const response = await authFetch(`https://${NEXT_PUBLIC_BACKEND_URL}/api/training/start/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -4438,7 +4438,7 @@ export default function TrainingContent() {
       formData.append('video_width', videoDimensions.width.toString());
       formData.append('video_height', videoDimensions.height.toString());
 
-      const response = await authFetch(`https//${NEXT_PUBLIC_BACKEND_URL}/api/training/full-frame`, {
+      const response = await authFetch(`https://${NEXT_PUBLIC_BACKEND_URL}/api/training/full-frame`, {
         method: 'POST',
         body: formData,
       });
@@ -4502,7 +4502,7 @@ export default function TrainingContent() {
           const pointsArray = roi.points.map(p => [p.x, p.y]);
           formData.append('roi_points', JSON.stringify(pointsArray));
 
-          const response = await authFetch(`https//${NEXT_PUBLIC_BACKEND_URL}/api/training/frames/`, {
+          const response = await authFetch(`https://${NEXT_PUBLIC_BACKEND_URL}/api/training/frames/`, {
             method: 'POST',
             body: formData,
           });
@@ -4526,7 +4526,7 @@ export default function TrainingContent() {
   // Backend connection functions
   const checkBackendConnection = async () => {
     try {
-      const response = await authFetch(`https//${NEXT_PUBLIC_BACKEND_URL}/api/health`, { skipAuth: true });
+      const response = await authFetch(`https://${NEXT_PUBLIC_BACKEND_URL}/api/health`, { skipAuth: true });
       if (response.ok) {
         const data = await response.json();
         if (data.status === 'ok') {
@@ -4540,7 +4540,7 @@ export default function TrainingContent() {
     }
 
     try {
-      const response = await authFetch(`https//${NEXT_PUBLIC_BACKEND_URL}/api/health/`, { skipAuth: true });
+      const response = await authFetch(`https://${NEXT_PUBLIC_BACKEND_URL}/api/health/`, { skipAuth: true });
       if (response.ok) {
         const data = await response.json();
         if (data.status === 'ok') {
@@ -4560,7 +4560,7 @@ export default function TrainingContent() {
 
   const checkOakCameraConnection = async () => {
     try {
-      const response = await fetch('https//localhost:5000/api/health');
+      const response = await fetch('https://localhost:5000/api/health');
       if (response.ok) {
         const data = await response.json();
         return data.camera_running ? 'streaming' : 'idle';
@@ -4573,7 +4573,7 @@ export default function TrainingContent() {
 
   const listOakDevices = async () => {
     try {
-      const response = await fetch('https//localhost:5000/api/camera/devices');
+      const response = await fetch('https://localhost:5000/api/camera/devices');
       if (response.ok) {
         const data = await response.json();
         setOakDevices(data.devices || []);
@@ -4588,7 +4588,7 @@ export default function TrainingContent() {
 
   const startOakCamera = async () => {
     try {
-      const response = await fetch('https//localhost:5000/api/camera/start', {
+      const response = await fetch('https://localhost:5000/api/camera/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
@@ -4598,7 +4598,7 @@ export default function TrainingContent() {
       setIsOakStreaming(true);
       setOakCameraState('streaming');
       handleInputSourceChange('oak');
-      setStreamUrl('https//localhost:5000/api/camera/stream');
+      setStreamUrl('https://localhost:5000/api/camera/stream');
       addTerminalLog('✓ OAK Camera started streaming');
 
     } catch (error) {
@@ -4610,7 +4610,7 @@ export default function TrainingContent() {
 
   const stopOakCamera = async () => {
     try {
-      await fetch('https//localhost:5000/api/camera/stop', { method: 'POST' });
+      await fetch('https://localhost:5000/api/camera/stop', { method: 'POST' });
 
       setIsOakStreaming(false);
       setOakCameraState('idle');
@@ -4645,7 +4645,7 @@ export default function TrainingContent() {
 
   const checkDatasets = async () => {
     try {
-      const response = await authFetch(`https//${NEXT_PUBLIC_BACKEND_URL}/api/datasets`);
+      const response = await authFetch(`https://${NEXT_PUBLIC_BACKEND_URL}/api/datasets`);
       const data = await response.json();
       console.log('Datasets:', data);
       addTerminalLog(`Found ${data.datasets?.length || 0} datasets`);
@@ -4756,7 +4756,7 @@ export default function TrainingContent() {
     const token = localStorage.getItem("access_token")
     if (!token) return
 
-    authFetch("https//localhost:8000/api/auth/me")
+    authFetch("https://localhost:8000/api/auth/me")
       .then(res => res.json())
       .then(data => {
         setUser(data)
