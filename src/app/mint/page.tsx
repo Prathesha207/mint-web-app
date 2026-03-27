@@ -1171,16 +1171,34 @@ export default function TrainingContent() {
 
 
   const NEXT_PUBLIC_BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'localhost:8000';
-  const backendsUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+  // const backendsUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
 
   // Hardcode it for now to prove the connection works
-  const backendUrl = "warming-sun-mpg-municipal.trycloudflare.com";
 
-  // Use the hardcoded variable instead of process.env
-  console.log("DEBUG: Connecting to:", backendUrl);
+  useEffect(() => {
+    const checkBackend = async () => {
+      const backendUrl = "warming-sun-mpg-municipal.trycloudflare.com";
+      const apiUrl = `https://${backendUrl}`;
 
-  // Construct the URL correctly (note the colon :)
-  const apiUrl = `https://${backendUrl}/api/sessions/${sessionName}/frame-count`;
+      console.log("DEBUG: Attempting to connect to:", apiUrl);
+
+      try {
+        // Note: authFetch must be defined in your project
+        const response = await fetch(apiUrl);
+        console.log("SUCCESS: Backend responded with status:", response.status);
+
+        if (response.ok) {
+          console.log("Backend is officially CONNECTED!");
+        }
+      } catch (error) {
+        console.error("ERROR: Connection failed. Check if your tunnel is running!", error);
+      }
+    };
+
+    checkBackend();
+  }, []); // Runs once when the page loads
+
+
 
 
   // Helper functions
