@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-export function middleware(req) {
+export function middleware(req: { cookies: { get: (arg0: string) => any; }; url: string | URL | undefined; }) {
 
   const token = req.cookies.get("access_token");
 

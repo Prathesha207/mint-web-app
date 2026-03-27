@@ -1,7 +1,8 @@
 'use client';
 
 import { Brain, Camera, Clock, CloudUpload, Smartphone, Target, Video } from 'lucide-react';
-import type { InferenceInputSource } from '@/hooks/useInference';
+import { InferenceInputSource } from '../../hooks/useInference';
+
 
 interface TrainingFooterProps {
   roisCount: number;

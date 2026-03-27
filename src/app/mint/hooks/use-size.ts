@@ -60,7 +60,10 @@ export const useSize = (ref: React.RefObject<HTMLElement>, threshold: number = 5
       rafNumbers.current.push(requestAnimationFrame(() => {
         rafNumbers.current.push(requestAnimationFrame(() => {
           // If no resize changed observed after 3 animation frames, update the size
-          updateSize(pendingSize.current)
+          if (pendingSize.current) {
+            updateSize(pendingSize.current);
+          }
+
           pendingSize.current = null
         }))
       }))
