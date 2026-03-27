@@ -1169,8 +1169,19 @@ export default function TrainingContent() {
   const itemSelected =
     "bg-blue-600/15 text-blue-100 border border-blue-500/80 shadow-[0_18px_55px_rgba(37,99,235,0.75)] hover:bg-blue-600/25 active:translate-y-[1px]";
 
+
   const NEXT_PUBLIC_BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'localhost:8000';
-  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+  const backendsUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+
+  // Hardcode it for now to prove the connection works
+  const backendUrl = "warming-sun-mpg-municipal.trycloudflare.com";
+
+  // Use the hardcoded variable instead of process.env
+  console.log("DEBUG: Connecting to:", backendUrl);
+
+  // Construct the URL correctly (note the colon :)
+  const apiUrl = `https://${backendUrl}/api/sessions/${sessionName}/frame-count`;
+
 
   // Helper functions
   const renderProgressBar = (percent: number, width = 20) => {
