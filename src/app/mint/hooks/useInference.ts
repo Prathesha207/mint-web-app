@@ -164,9 +164,9 @@ const normalizeBackendVideoStatus = (
 };
 
 const toApiBase = (backendUrl: string) =>
-  backendUrl.startsWith('http://') || backendUrl.startsWith('https://')
+  backendUrl.startsWith('https//') || backendUrl.startsWith('https://')
     ? backendUrl.replace(/\/$/, '')
-    : `http://${backendUrl.replace(/\/$/, '')}`;
+    : `https//${backendUrl.replace(/\/$/, '')}`;
 
 const getStoredAccessToken = () =>
   typeof window === 'undefined' ? '' : window.localStorage.getItem('access_token') || '';

@@ -20,30 +20,30 @@ const iceServers = {
 };
 
 wss.on('connection', (ws, req) => {
-  const sessionId = new URL(req.url, `http://${req.headers.host}`).searchParams.get('session');
-  
+  const sessionId = new URL(req.url, `https//${req.headers.host}`).searchParams.get('session');
+
   console.log(`New WebSocket connection for session: ${sessionId}`);
-  
+
   if (!sessionId) {
     ws.close(1008, 'No session ID provided');
     return;
   }
-  
+
   // Store connection
   ws.sessionId = sessionId;
   ws.role = null; // 'sender' or 'receiver'
   connections.set(sessionId, ws);
-  
+
   ws.on('message', (message) => {
     try {
       const data = JSON.parse(message);
       console.log(`Message in session ${sessionId} (${data.type}):`, data);
-      
+
       switch (data.type) {
         case 'join':
           ws.role = data.role;
           console.log(`${sessionId}: ${data.role} joined`);
-          
+
           // Notify other peer if both are connected
           const peerWs = connections.get(sessionId);
           if (peerWs && peerWs !== ws) {
@@ -53,18 +53,18 @@ wss.on('connection', (ws, req) => {
             }));
           }
           break;
-          
+
         case 'offer':
         case 'answer':
         case 'ice-candidate':
           // Forward signaling messages to the other peer
           forwardToPeer(sessionId, ws, data);
           break;
-          
+
         case 'ping':
           ws.send(JSON.stringify({ type: 'pong', timestamp: Date.now() }));
           break;
-          
+
         case 'disconnect':
           console.log(`Disconnect: ${sessionId} (${ws.role})`);
           cleanupConnection(sessionId, ws);
@@ -74,12 +74,12 @@ wss.on('connection', (ws, req) => {
       console.error('Error parsing message:', error);
     }
   });
-  
+
   ws.on('close', () => {
     console.log(`Connection closed: ${sessionId} (${ws.role})`);
     cleanupConnection(sessionId, ws);
   });
-  
+
   ws.on('error', (error) => {
     console.error(`WebSocket error (${sessionId}):`, error);
     cleanupConnection(sessionId, ws);
@@ -89,7 +89,7 @@ wss.on('connection', (ws, req) => {
 function forwardToPeer(sessionId, senderWs, message) {
   // Find other peer in the same session
   const peerWs = connections.get(sessionId);
-  
+
   if (peerWs && peerWs !== senderWs && peerWs.readyState === WebSocket.OPEN) {
     console.log(`Forwarding ${message.type} from ${senderWs.role} to ${peerWs.role}`);
     peerWs.send(JSON.stringify(message));
@@ -114,7 +114,7 @@ function cleanupConnection(sessionId, ws) {
       role: ws.role
     }));
   }
-  
+
   // Remove from connections map
   connections.delete(sessionId);
 }

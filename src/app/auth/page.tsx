@@ -76,7 +76,7 @@ export default function AuthPage() {
         body.append("username", formData.email) // 🔥 REQUIRED
         body.append("password", formData.password)
 
-        const res = await fetch("http://localhost:8000/api/auth/signin", {
+        const res = await fetch("https//localhost:8000/api/auth/signin", {
           method: "POST",
           headers: {
             "Content-Type": "application/x-www-form-urlencoded"
@@ -106,7 +106,7 @@ export default function AuthPage() {
       // ================= SIGNUP =================
       else {
 
-        const res = await fetch("http://localhost:8000/api/auth/signup", {
+        const res = await fetch("https//localhost:8000/api/auth/signup", {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
