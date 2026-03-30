@@ -2225,9 +2225,48 @@ export default function TrainingContent() {
 
   const startCamera = async (deviceId?: string) => {
     try {
+<<<<<<< HEAD
       // 1. Start with bare minimum constraints
       let constraints: MediaStreamConstraints = {
         video: true, // Let the browser choose defaults
+=======
+      // Quick environment checks for secure context and API availability
+      if (typeof window !== 'undefined') {
+        if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+          const msg = `Webcam requires secure context (HTTPS) - current protocol is ${window.location.protocol}`;
+          addTerminalLog(`❌ ${msg}`);
+          setCameraError(msg);
+          return;
+        }
+      }
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        const msg = 'navigator.mediaDevices.getUserMedia is not supported in this browser.';
+        addTerminalLog(`❌ ${msg}`);
+        setCameraError(msg);
+        return;
+      }
+
+      if (navigator.permissions && typeof navigator.permissions.query === 'function') {
+        try {
+          const permResult = await navigator.permissions.query({ name: 'camera' as PermissionName });
+          addTerminalLog(`🔐 Camera permission status: ${permResult.state}`);
+          permResult.onchange = () => addTerminalLog(`🔐 Camera permission changed to: ${permResult.state}`);
+          if (permResult.state === 'denied') {
+            const msg = 'Camera permission denied by user or browser.';
+            setCameraError(msg);
+            addTerminalLog(`❌ ${msg}`);
+            return;
+          }
+        } catch (permError: any) {
+          addTerminalLog(`⚠️ Permission query error: ${permError?.message || permError}`);
+        }
+      }
+
+      // 1. Start with bare minimum constraints
+      let constraints: MediaStreamConstraints = {
+        video: true,
+>>>>>>> 146a389 (Final-fix)
         audio: false
       };
 
@@ -2235,7 +2274,10 @@ export default function TrainingContent() {
       if (deviceId) {
         constraints.video = {
           deviceId: { exact: deviceId },
+<<<<<<< HEAD
           // Use 'ideal' instead of 'exact' for dimensions to be more flexible
+=======
+>>>>>>> 146a389 (Final-fix)
           width: { ideal: 1280 },
           height: { ideal: 720 },
           frameRate: { ideal: 30 }
@@ -2244,13 +2286,17 @@ export default function TrainingContent() {
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
 
+<<<<<<< HEAD
       // 3. Rest of your code to handle the stream...
+=======
+>>>>>>> 146a389 (Final-fix)
       if (currentCameraStream) {
         stopCamera();
       }
 
       setCurrentCameraStream(stream);
       setCameraError(null);
+<<<<<<< HEAD
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -2287,6 +2333,44 @@ export default function TrainingContent() {
             });
         }
       }
+=======
+      setInputSource('camera');
+      setShowCameraSelection(false);
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      } else {
+        addTerminalLog('ℹ️ videoRef.current not yet available; stream will attach on next render via useEffect.');
+      }
+
+      addTerminalLog('✓ Webcam stream obtained');
+
+      const videoTracks = stream.getVideoTracks();
+      addTerminalLog(`📹 Stream tracks: ${videoTracks.length} video, ${stream.getAudioTracks().length} audio`);
+
+      if (videoTracks.length > 0) {
+        const settings = videoTracks[0].getSettings?.() || {};
+        addTerminalLog(`📹 Track settings: width=${settings.width || 'n/a'} height=${settings.height || 'n/a'} frameRate=${settings.frameRate || 'n/a'}`);
+      }
+
+      const tryPlay = () => {
+        if (!videoRef.current) return;
+        const playPromise = videoRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => addTerminalLog('✓ Webcam playback started'))
+            .catch((err: any) => {
+              addTerminalLog(`⚠️ Autoplay blocked: ${err?.message || err}`);
+              addTerminalLog('💡 Click the video to play if autoplay is blocked.');
+            });
+        }
+      };
+
+      if (videoRef.current) {
+        tryPlay();
+      }
+
+>>>>>>> 146a389 (Final-fix)
     } catch (error: any) {
       console.error('Error accessing camera:', error);
       const msg = error?.name === 'NotAllowedError'
@@ -2303,6 +2387,7 @@ export default function TrainingContent() {
       // 4. Fallback: Try without any constraints at all
       try {
         addTerminalLog('Trying with fallback constraints (video: true)...');
+<<<<<<< HEAD
         const fallbackStream = await navigator.mediaDevices.getUserMedia({
           video: true,
           audio: false
@@ -2321,6 +2406,28 @@ export default function TrainingContent() {
             addTerminalLog('💡 Hint: Try clicking on the video to start playback');
           });
         }
+=======
+        const fallbackStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+
+        setCurrentCameraStream(fallbackStream);
+        setInputSource('camera');
+        setShowCameraSelection(false);
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = fallbackStream;
+          const fallbackPlay = videoRef.current.play();
+          if (fallbackPlay !== undefined) {
+            fallbackPlay.catch((err: any) => {
+              addTerminalLog(`⚠️ Autoplay blocked (fallback): ${err?.message || err}`);
+            });
+          }
+        } else {
+          addTerminalLog('ℹ️ videoRef.current not available in fallback mode; will attach after render.');
+        }
+
+        addTerminalLog('✓ Webcam started with fallback constraints');
+
+>>>>>>> 146a389 (Final-fix)
       } catch (fallbackError: any) {
         const msg = `Fallback also failed: ${fallbackError?.message || 'unknown error'}`;
         setCameraError(msg);
@@ -2350,6 +2457,31 @@ export default function TrainingContent() {
     addTerminalLog('✓ Camera stopped');
   };
 
+<<<<<<< HEAD
+=======
+  useEffect(() => {
+    if (inputSource !== 'camera' || !currentCameraStream) {
+      return;
+    }
+
+    if (!videoRef.current) {
+      addTerminalLog('ℹ️ Waiting for camera video element to mount before attaching stream');
+      return;
+    }
+
+    if (videoRef.current.srcObject !== currentCameraStream) {
+      videoRef.current.srcObject = currentCameraStream;
+      addTerminalLog('✓ Camera stream attached to video element via useEffect');
+      const playPromise = videoRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => addTerminalLog('✓ Video playback started via useEffect'))
+          .catch((err: any) => addTerminalLog(`⚠️ Autoplay blocked via useEffect: ${err?.message || err}`));
+      }
+    }
+  }, [inputSource, currentCameraStream]);
+
+>>>>>>> 146a389 (Final-fix)
   const handleCameraSelect = async () => {
     if (!selectedCameraId && availableCameras.length > 0) {
       setSelectedCameraId(availableCameras[0].deviceId);
@@ -2985,7 +3117,11 @@ export default function TrainingContent() {
 
       // Auto-upload to backend
       if (autoUploadToBackend) {
+<<<<<<< HEAD
         addTerminalLog(`ðŸ“¤ Auto-uploading video to backend...`);
+=======
+        addTerminalLog(`📤Auto-uploading video to backend...`);
+>>>>>>> 146a389 (Final-fix)
         setTimeout(() => {
           if (backendExtractionMode) {
             uploadVideoToBackend(file);
