@@ -18,6 +18,7 @@ import {
 export default function AuthPage() {
 
   const router = useRouter()
+  const NEXT_PUBLIC_BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'games-measure-gap-rows.trycloudflare.com'
 
   const [isLogin, setIsLogin] = useState(true)
   const [loading, setLoading] = useState(false)
@@ -76,7 +77,7 @@ export default function AuthPage() {
         body.append("username", formData.email) // 🔥 REQUIRED
         body.append("password", formData.password)
 
-        const res = await fetch("https://localhost:8000/api/auth/signin", {
+        const res = await fetch(`https://${NEXT_PUBLIC_BACKEND_URL}/api/auth/signin`, {
           method: "POST",
           headers: {
             "Content-Type": "application/x-www-form-urlencoded"
@@ -106,7 +107,7 @@ export default function AuthPage() {
       // ================= SIGNUP =================
       else {
 
-        const res = await fetch("https://localhost:8000/api/auth/signup", {
+        const res = await fetch(`https://${NEXT_PUBLIC_BACKEND_URL}/api/auth/signup`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json"

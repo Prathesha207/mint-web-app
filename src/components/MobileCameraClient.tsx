@@ -39,13 +39,13 @@ export default function MobileCameraPage() {
   const [cameraStats, setCameraStats] = useState({ width: 0, height: 0, framesSent: 0 });
   const [showDebug, setShowDebug] = useState(false);
   const [connectionQuality, setConnectionQuality] = useState<'good' | 'fair' | 'poor'>('good');
-  
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const searchParams = useSearchParams();
-  
-  const NEXT_PUBLIC_BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'localhost:8000';
+
+  const NEXT_PUBLIC_BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'games-measure-gap-rows.trycloudflare.com';
 
   useEffect(() => {
     const session = searchParams.get('session');
@@ -53,10 +53,10 @@ export default function MobileCameraPage() {
       setSessionId(session);
       setStatus(`Session: ${session}`);
     }
-    
+
     // Auto-detect network quality - Fixed with proper type checking
     detectConnectionQuality();
-    
+
     return () => {
       stopStreaming();
     };
@@ -80,12 +80,12 @@ export default function MobileCameraPage() {
     try {
       const devices = await navigator.mediaDevices.enumerateDevices();
       const videoDevices = devices.filter(device => device.kind === 'videoinput');
-      
+
       if (videoDevices.length === 0) {
         setCameraError('📷 No camera found');
         return false;
       }
-      
+
       return true;
     } catch (err) {
       console.error('Error checking camera:', err);
@@ -102,12 +102,12 @@ export default function MobileCameraPage() {
       });
       streamRef.current = null;
     }
-    
+
     if (videoRef.current) {
       videoRef.current.srcObject = null;
       videoRef.current.load();
     }
-    
+
     await new Promise(resolve => setTimeout(resolve, 300));
   };
 
@@ -115,9 +115,9 @@ export default function MobileCameraPage() {
     try {
       setError(null);
       setCameraError(null);
-      
+
       await ensureCameraReleased();
-      
+
       const hasPermission = await checkCameraPermissions();
       if (!hasPermission) {
         setStatus('🔒 Camera permission needed');
@@ -132,34 +132,34 @@ export default function MobileCameraPage() {
           frameRate: { ideal: 30 }
         }
       };
-      
+
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       streamRef.current = stream;
-      
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        
+
         await new Promise((resolve, reject) => {
           const video = videoRef.current!;
-          
+
           const onLoaded = () => {
             video.play().then(resolve).catch(reject);
           };
-          
+
           const onError = () => {
             reject(new Error('Video element error'));
           };
-          
+
           video.onloadedmetadata = onLoaded;
           video.onerror = onError;
-          
+
           setTimeout(() => {
             if (!video.readyState) {
               reject(new Error('Camera timeout'));
             }
           }, 5000);
         });
-        
+
         const track = stream.getVideoTracks()[0];
         const settings = track.getSettings();
         setCameraStats(prev => ({
@@ -168,15 +168,15 @@ export default function MobileCameraPage() {
           height: settings.height || 0
         }));
       }
-      
+
       setIsStreaming(true);
       setStatus('🎥 Camera ready - Tap Connect');
-      
+
     } catch (error: any) {
       console.error('Error accessing camera:', error);
-      
+
       await ensureCameraReleased();
-      
+
       if (error.name === 'NotAllowedError') {
         setError('Permission denied. Allow camera access in browser settings.');
       } else if (error.name === 'NotFoundError') {
@@ -186,7 +186,7 @@ export default function MobileCameraPage() {
       } else {
         setError(`Camera error: ${error.message}`);
       }
-      
+
       setIsStreaming(false);
     }
   };
@@ -196,25 +196,25 @@ export default function MobileCameraPage() {
       setError('Missing session ID');
       return;
     }
-    
+
     setIsConnecting(true);
     setStatus('🔗 Connecting...');
-    
+
     try {
       const testResponse = await fetch(`https://${NEXT_PUBLIC_BACKEND_URL}/api/remote-camera/test/${sessionId}`);
-      
+
       if (!testResponse.ok) {
         throw new Error(`Connection failed (${testResponse.status})`);
       }
-      
+
       await testResponse.json();
-      
+
       setConnected(true);
       setIsConnecting(false);
       setStatus('✅ Connected - Streaming');
-      
+
       startFrameStreaming();
-      
+
     } catch (error: any) {
       console.error('Connection error:', error);
       setError(`Connection failed: ${error.message}`);
@@ -228,25 +228,25 @@ export default function MobileCameraPage() {
       clearInterval(frameInterval);
       setFrameInterval(null);
     }
-    
+
     const interval = setInterval(async () => {
       if (!videoRef.current || !canvasRef.current || !streamRef.current) return;
-      
+
       const video = videoRef.current;
       const canvas = canvasRef.current;
       const ctx = canvas.getContext('2d');
-      
+
       if (!ctx || video.videoWidth === 0 || video.videoHeight === 0) return;
-      
+
       try {
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
-        
+
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        
+
         const base64Image = canvas.toDataURL('image/jpeg', quality);
         const base64Data = base64Image.split(',')[1];
-        
+
         await fetch(`https://${NEXT_PUBLIC_BACKEND_URL}/api/remote-camera/frame/${sessionId}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -258,17 +258,17 @@ export default function MobileCameraPage() {
             fps: fps
           }),
         });
-        
+
         setCameraStats(prev => ({
           ...prev,
           framesSent: prev.framesSent + 1
         }));
-        
+
       } catch (error) {
         console.log('Frame send error (continuing)', error);
       }
     }, 1000 / fps);
-    
+
     setFrameInterval(interval);
   };
 
@@ -277,19 +277,19 @@ export default function MobileCameraPage() {
       clearInterval(frameInterval);
       setFrameInterval(null);
     }
-    
+
     ensureCameraReleased();
-    
+
     setIsStreaming(false);
     setConnected(false);
     setIsConnecting(false);
     setStatus('⏹️ Streaming stopped');
     setCameraStats(prev => ({ ...prev, framesSent: 0 }));
-    
+
     if (sessionId) {
       fetch(`https://${NEXT_PUBLIC_BACKEND_URL}/api/remote-camera/stop/${sessionId}`, {
         method: 'POST'
-      }).catch(() => {});
+      }).catch(() => { });
     }
   };
 
@@ -303,7 +303,7 @@ export default function MobileCameraPage() {
 
   const copySessionId = () => {
     if (!sessionId) return;
-    
+
     navigator.clipboard.writeText(sessionId);
     setStatus('📋 Session ID copied!');
     setTimeout(() => {
@@ -335,7 +335,7 @@ export default function MobileCameraPage() {
               <div className={`w-2 h-2 rounded-full mr-2 ${connected ? 'bg-green-300 animate-pulse' : 'bg-yellow-300'}`}></div>
               {connected ? 'LIVE' : 'OFFLINE'}
             </div>
-            <button 
+            <button
               onClick={() => setShowDebug(!showDebug)}
               className="p-2 hover:bg-white/10 rounded-lg transition-colors"
               title="Toggle debug"
@@ -356,7 +356,7 @@ export default function MobileCameraPage() {
               </div>
               <div className="ml-3">
                 <p className="text-sm text-gray-400">Session ID</p>
-                <button 
+                <button
                   onClick={copySessionId}
                   className="font-mono text-sm hover:text-blue-300 transition-colors text-left truncate max-w-[150px]"
                   title={sessionId || 'No session'}
@@ -366,7 +366,7 @@ export default function MobileCameraPage() {
               </div>
             </div>
           </div>
-          
+
           <div className="backdrop-blur-lg bg-gradient-to-br from-purple-900/20 to-purple-900/5 rounded-2xl p-5 border border-purple-500/20">
             <div className="flex items-center mb-3">
               <div className="p-2 bg-purple-500/20 rounded-lg">
@@ -380,7 +380,7 @@ export default function MobileCameraPage() {
               </div>
             </div>
           </div>
-          
+
           <div className="backdrop-blur-lg bg-gradient-to-br from-green-900/20 to-green-900/5 rounded-2xl p-5 border border-green-500/20">
             <div className="flex items-center justify-between">
               <div>
@@ -421,7 +421,7 @@ export default function MobileCameraPage() {
                 <p className="text-sm text-gray-500">Tap "Start Camera" to begin</p>
               </div>
             )}
-            
+
             {/* Camera Overlay Stats */}
             {isStreaming && (
               <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end">
@@ -433,13 +433,13 @@ export default function MobileCameraPage() {
                     Frames: {cameraStats.framesSent}
                   </div>
                 </div>
-                
+
                 <div className="flex space-x-2">
                   {[1, 2, 3].map(i => (
-                    <div 
-                      key={i} 
+                    <div
+                      key={i}
                       className={`w-2 rounded-full ${connected ? 'bg-gradient-to-t from-green-400 to-emerald-500' : 'bg-gray-600'}`}
-                      style={{ 
+                      style={{
                         height: connected ? `${Math.random() * 16 + 16}px` : '16px',
                         animation: connected ? `pulse ${0.5 + i * 0.2}s infinite` : 'none'
                       }}
@@ -449,7 +449,7 @@ export default function MobileCameraPage() {
               </div>
             )}
           </div>
-          
+
           {/* Camera Controls Floating */}
           <div className="absolute -bottom-6 left-1/2 transform -translate-x-1/2">
             <div className="flex space-x-4">
@@ -500,7 +500,7 @@ export default function MobileCameraPage() {
               <Settings className="w-5 h-5 mr-2 text-blue-400" />
               Stream Settings
             </h2>
-            
+
             <div className="space-y-6">
               <div>
                 <div className="flex justify-between mb-2">
@@ -517,7 +517,7 @@ export default function MobileCameraPage() {
                   disabled={connected}
                 />
               </div>
-              
+
               <div>
                 <div className="flex justify-between mb-2">
                   <span className="text-gray-300">Quality</span>
@@ -534,7 +534,7 @@ export default function MobileCameraPage() {
                   disabled={connected}
                 />
               </div>
-              
+
               <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={hardResetCamera}
@@ -544,7 +544,7 @@ export default function MobileCameraPage() {
                   <RotateCcw className="w-5 h-5 mr-2" />
                   Reset
                 </button>
-                
+
                 <button
                   onClick={() => window.location.reload()}
                   className="py-3 bg-gradient-to-r from-gray-800/30 to-gray-800/10 hover:from-gray-700/40 hover:to-gray-700/20 rounded-xl font-medium flex items-center justify-center border border-gray-600/20 transition-all"
@@ -562,7 +562,7 @@ export default function MobileCameraPage() {
               <Monitor className="w-5 h-5 mr-2 text-green-400" />
               Connection Status
             </h2>
-            
+
             <div className="space-y-4">
               <div className="flex items-center justify-between p-3 bg-gradient-to-r from-gray-800/30 to-gray-800/10 rounded-xl border border-gray-600/20">
                 <div className="flex items-center">
@@ -578,13 +578,13 @@ export default function MobileCameraPage() {
                   {connected ? 'Connected' : 'Disconnected'}
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="p-3 bg-gradient-to-r from-blue-900/20 to-blue-900/5 rounded-xl border border-blue-500/20">
                   <p className="text-sm text-gray-400">Data Sent</p>
                   <p className="text-xl font-bold">{cameraStats.framesSent} frames</p>
                 </div>
-                
+
                 <div className="p-3 bg-gradient-to-r from-purple-900/20 to-purple-900/5 rounded-xl border border-purple-500/20">
                   <p className="text-sm text-gray-400">Stream Quality</p>
                   <p className="text-xl font-bold">{Math.round(quality * 100)}%</p>
@@ -606,7 +606,7 @@ export default function MobileCameraPage() {
                   <button
                     onClick={() => navigator.mediaDevices.getUserMedia({ video: true })
                       .then(stream => stream.getTracks().forEach(t => t.stop()))
-                      .catch(() => {})}
+                      .catch(() => { })}
                     className="mt-3 px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 rounded-lg text-sm transition-all"
                   >
                     Request Permission
@@ -625,14 +625,14 @@ export default function MobileCameraPage() {
                 <Shield className="w-5 h-5 mr-2 text-gray-400" />
                 Debug Information
               </h2>
-              <button 
+              <button
                 onClick={() => setShowDebug(false)}
                 className="text-gray-400 hover:text-white"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
-            
+
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
               <div className="bg-black/20 p-3 rounded-xl">
                 <p className="text-gray-400">Platform</p>
@@ -662,7 +662,7 @@ export default function MobileCameraPage() {
             <Sparkles className="w-5 h-5 mr-2 text-yellow-400" />
             Quick Start Guide
           </h2>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-3">
               <div className="flex items-start">
@@ -674,7 +674,7 @@ export default function MobileCameraPage() {
                   <p className="text-sm text-gray-400">Allow camera access when prompted</p>
                 </div>
               </div>
-              
+
               <div className="flex items-start">
                 <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg flex items-center justify-center font-bold mr-3">
                   2
@@ -685,7 +685,7 @@ export default function MobileCameraPage() {
                 </div>
               </div>
             </div>
-            
+
             <div className="space-y-3">
               <div className="flex items-start">
                 <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center font-bold mr-3">
@@ -696,7 +696,7 @@ export default function MobileCameraPage() {
                   <p className="text-sm text-gray-400">Optimize FPS & quality for your network</p>
                 </div>
               </div>
-              
+
               <div className="flex items-start">
                 <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-lg flex items-center justify-center font-bold mr-3">
                   4
@@ -708,10 +708,10 @@ export default function MobileCameraPage() {
               </div>
             </div>
           </div>
-          
+
           <div className="mt-6 p-4 bg-gradient-to-r from-blue-900/20 to-cyan-900/20 rounded-xl border border-cyan-500/20">
             <p className="text-sm text-gray-300">
-              💡 <strong>Pro Tip:</strong> Use good lighting and stable connection for best results. 
+              💡 <strong>Pro Tip:</strong> Use good lighting and stable connection for best results.
               Lower quality for poor networks, increase FPS for fast-moving subjects.
             </p>
           </div>
@@ -730,7 +730,7 @@ export default function MobileCameraPage() {
       </footer>
 
       <canvas ref={canvasRef} className="hidden" />
-      
+
       {/* Add global styles for animations */}
       <style jsx global>{`
         @keyframes pulse {

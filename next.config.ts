@@ -26,9 +26,9 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_APP_NAME: 'DIME - Dynamic Inspection Metrology & Evaluation',
     NEXT_PUBLIC_APP_VERSION: '1.0.0',
-    NEXT_PUBLIC_API_URL: process.env.NODE_ENV === 'production'
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || (process.env.NODE_ENV === 'production'
       ? 'https://api.dime-ai.com'
-      : 'https//localhost:8000',
+      : 'https://localhost:8000'),
   },
 
   // Add this to make dev server accessible on network

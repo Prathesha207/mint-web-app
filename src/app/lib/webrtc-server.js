@@ -20,7 +20,7 @@ const iceServers = {
 };
 
 wss.on('connection', (ws, req) => {
-  const sessionId = new URL(req.url, `https//${req.headers.host}`).searchParams.get('session');
+  const sessionId = new URL(req.url, `https://${req.headers.host}`).searchParams.get('session');
 
   console.log(`New WebSocket connection for session: ${sessionId}`);
 

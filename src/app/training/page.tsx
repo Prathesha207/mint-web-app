@@ -101,6 +101,7 @@ export default function TrainingPage() {
   const [showCameraSelection, setShowCameraSelection] = useState(false);
   const [isLoadingCameras, setIsLoadingCameras] = useState(false);
   const [currentCameraStream, setCurrentCameraStream] = useState<MediaStream | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
 
   // Mobile responsive states
   const [isMobile, setIsMobile] = useState(false);
@@ -1387,12 +1388,20 @@ export default function TrainingPage() {
       }
 
       setCurrentCameraStream(stream);
+      ~setCameraError(null);
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         setInputSource('camera');
         setShowCameraSelection(false);
         addTerminalLog('✓ Webcam started successfully');
+
+        // Force play to avoid browser autoplay block even when muted/playsInline
+        videoRef.current.play().then(() => {
+          addTerminalLog('✓ Webcam playback started');
+        }).catch((err: any) => {
+          addTerminalLog(`⚠️ Webcam playback was blocked: ${err?.message || err}`);
+        });
 
         // Wait for video metadata to get actual resolution
         videoRef.current.onloadedmetadata = () => {
@@ -1405,7 +1414,16 @@ export default function TrainingPage() {
       }
     } catch (error: any) {
       console.error('Error accessing camera:', error);
-      addTerminalLog(`❌ Error accessing camera: ${error.message}`);
+      const msg = error?.name === 'NotAllowedError'
+        ? 'Camera access denied. Please allow camera permissions in your browser settings.'
+        : error?.name === 'NotFoundError'
+          ? 'No camera found. Connect a camera and try again.'
+          : error?.name === 'NotReadableError'
+            ? 'Camera is already in use by another app.'
+            : `Error accessing camera: ${error?.message || 'unknown error'}`;
+
+      setCameraError(msg);
+      addTerminalLog(`❌ ${msg}`);
 
       // 4. Fallback: Try without any constraints at all
       try {
@@ -1423,8 +1441,10 @@ export default function TrainingPage() {
           addTerminalLog('✓ Webcam started with fallback constraints');
         }
       } catch (fallbackError: any) {
-        addTerminalLog(`❌ Fallback also failed: ${fallbackError.message}`);
-        alert(`Could not access any camera. Error: ${fallbackError.message}`);
+        const msg = `Fallback also failed: ${fallbackError?.message || 'unknown error'}`;
+        setCameraError(msg);
+        addTerminalLog(`❌ ${msg}`);
+        alert(`Could not access any camera. ${fallbackError?.message || fallbackError}`);
       }
     }
   };
@@ -1445,6 +1465,7 @@ export default function TrainingPage() {
       setInputSource('upload');
     }
 
+    setCameraError(null);
     addTerminalLog('✓ Camera stopped');
   };
 
@@ -4957,14 +4978,31 @@ export default function TrainingPage() {
                       />
                     )}
                     {inputSource === 'camera' && (
-                      <video
-                        ref={videoRef}
-                        className="w-full h-full object-contain"
-                        autoPlay
-                        muted
-                        playsInline
-                        onLoadedMetadata={handleVideoLoad}
-                      />
+                      <div className="relative w-full h-full overflow-hidden">
+                        <video
+                          ref={videoRef}
+                          className="absolute inset-0 w-full h-full object-cover"
+                          autoPlay
+                          muted
+                          playsInline
+                          onLoadedMetadata={handleVideoLoad}
+                        />
+                        {cameraError && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/75 text-white p-4 text-center">
+                            <div>
+                              <div className="font-semibold text-sm">Camera error</div>
+                              <div className="text-xs mt-2">{cameraError}</div>
+                              <button
+                                onClick={() => setCameraError(null)}
+                                className="mt-3 inline-flex rounded-md bg-blue-600 px-3 py-1 text-xs font-medium hover:bg-blue-500"
+                                type="button"
+                              >
+                                Dismiss
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     )}
                     {inputSource === 'remote' && remoteCameraFrame && (
                       <img

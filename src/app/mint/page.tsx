@@ -944,6 +944,7 @@ export default function TrainingContent() {
   const [showCameraSelection, setShowCameraSelection] = useState(false);
   const [isLoadingCameras, setIsLoadingCameras] = useState(false);
   const [currentCameraStream, setCurrentCameraStream] = useState<MediaStream | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
 
   // Mobile responsive states
   const [isMobile, setIsMobile] = useState(false);
@@ -1170,34 +1171,60 @@ export default function TrainingContent() {
     "bg-blue-600/15 text-blue-100 border border-blue-500/80 shadow-[0_18px_55px_rgba(37,99,235,0.75)] hover:bg-blue-600/25 active:translate-y-[1px]";
 
 
-  const NEXT_PUBLIC_BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'localhost:8000';
-  // const backendsUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+  const NEXT_PUBLIC_BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'games-measure-gap-rows.trycloudflare.com';
 
-  // Hardcode it for now to prove the connection works
+
 
   useEffect(() => {
-    const checkBackend = async () => {
-      const backendUrl = "warming-sun-mpg-municipal.trycloudflare.com";
-      const apiUrl = `https://${backendUrl}`;
+    console.log("1. Component Mounted");
 
-      console.log("DEBUG: Attempting to connect to:", apiUrl);
+    const checkBackend = async () => {
+      // 1. Define URL (Ensure no trailing slash)
+      const backendUrl = "games-measure-gap-rows.trycloudflare.com";
+      const apiUrl = `https://${backendUrl}/api/health`;
+
+      console.log("2. Testing connection to:", apiUrl);
 
       try {
-        // Note: authFetch must be defined in your project
-        const response = await fetch(apiUrl);
-        console.log("SUCCESS: Backend responded with status:", response.status);
+        // Use a timeout to avoid long hangs if the tunnel is down
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-        if (response.ok) {
-          console.log("Backend is officially CONNECTED!");
+        const response = await fetch(apiUrl, { signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        // 3. Check for Cloudflare-specific headers
+        const serverHeader = response.headers.get("server");
+        const cfRay = response.headers.get("cf-ray");
+
+        console.log("3. Status Received:", response.status);
+
+        if (cfRay) {
+          console.log("✅ SUCCESS: Connected via Cloudflare Tunnel");
+          console.log("   Cloudflare Ray ID:", cfRay);
+        } else {
+          console.warn("⚠️ WARNING: Connected, but Cloudflare headers are missing.");
         }
-      } catch (error) {
-        console.error("ERROR: Connection failed. Check if your tunnel is running!", error);
+
+        console.log("   Server type reported:", serverHeader || "Unknown");
+      } catch (err) {
+        // Narrow the type from 'unknown' to 'Error'
+        if (err instanceof Error) {
+          if (err.name === 'AbortError') {
+            console.error("❌ ERROR: Connection timed out. Is the tunnel running?");
+          } else {
+            console.error("❌ ERROR: Fetch Failed. Details:", err.message);
+          }
+        } else {
+          // Handle cases where something non-standard was thrown
+          console.error("❌ ERROR: An unexpected error occurred", err);
+        }
       }
+
     };
 
     checkBackend();
-  }, []); // Runs once when the page loads
-
+  }, []);
 
 
 
@@ -2223,6 +2250,7 @@ export default function TrainingContent() {
       }
 
       setCurrentCameraStream(stream);
+      setCameraError(null);
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -2230,18 +2258,47 @@ export default function TrainingContent() {
         setShowCameraSelection(false);
         addTerminalLog('✓ Webcam started successfully');
 
-        // Wait for video metadata to get actual resolution
-        videoRef.current.onloadedmetadata = () => {
-          const width = videoRef.current!.videoWidth;
-          const height = videoRef.current!.videoHeight;
-          setVideoDimensions({ width, height });
-          updateCanvasDimensions();
-          addTerminalLog(`✓ Camera resolution: ${width}x${height}`);
-        };
+        // Debug: Log stream and video element info
+        const videoTracks = stream.getVideoTracks();
+        addTerminalLog(`📹 Stream active tracks: ${videoTracks.length} video, ${stream.getAudioTracks().length} audio`);
+        addTerminalLog(`📹 Video element: ${videoRef.current ? 'attached' : 'not attached'}`);
+
+        // For MediaStream, dimensions are available from the track
+        if (videoTracks.length > 0) {
+          const track = videoTracks[0];
+          const settings = track.getSettings?.() || {};
+          if (settings.width && settings.height) {
+            addTerminalLog(`📹 Track resolution: ${settings.width}x${settings.height}`);
+          } else {
+            addTerminalLog(`📹 Track settings unavailable, waiting for onPlay event...`);
+          }
+        }
+
+        // Force play immediately
+        const playPromise = videoRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              addTerminalLog('✓ Video playback started');
+            })
+            .catch((err: any) => {
+              addTerminalLog(`⚠️ Autoplay blocked: ${err.message}`);
+              addTerminalLog('💡 Tip: Click the video area or wait - dimensions will show once video renders');
+            });
+        }
       }
     } catch (error: any) {
       console.error('Error accessing camera:', error);
-      addTerminalLog(`❌ Error accessing camera: ${error.message}`);
+      const msg = error?.name === 'NotAllowedError'
+        ? 'Camera access denied. Please allow camera permissions in your browser settings.'
+        : error?.name === 'NotFoundError'
+          ? 'No camera found. Connect a camera and try again.'
+          : error?.name === 'NotReadableError'
+            ? 'Camera is already in use by another app.'
+            : `Error accessing camera: ${error?.message || 'unknown error'}`;
+
+      setCameraError(msg);
+      addTerminalLog(`❌ ${msg}`);
 
       // 4. Fallback: Try without any constraints at all
       try {
@@ -2257,10 +2314,18 @@ export default function TrainingContent() {
           setInputSource('camera');
           setShowCameraSelection(false);
           addTerminalLog('✓ Webcam started with fallback constraints');
+
+          // Force play with error handling
+          videoRef.current.play().catch((err: any) => {
+            addTerminalLog(`⚠️ Autoplay blocked: ${err.message}`);
+            addTerminalLog('💡 Hint: Try clicking on the video to start playback');
+          });
         }
       } catch (fallbackError: any) {
-        addTerminalLog(`❌ Fallback also failed: ${fallbackError.message}`);
-        showToast(`Could not access any camera. Error: ${fallbackError.message}`, 'error');
+        const msg = `Fallback also failed: ${fallbackError?.message || 'unknown error'}`;
+        setCameraError(msg);
+        addTerminalLog(`❌ ${msg}`);
+        showToast(`Could not access any camera. ${fallbackError?.message || fallbackError}`, 'error');
       }
     }
   };
@@ -2281,6 +2346,7 @@ export default function TrainingContent() {
       setInputSource('upload');
     }
 
+    setCameraError(null);
     addTerminalLog('✓ Camera stopped');
   };
 
@@ -2987,10 +3053,10 @@ export default function TrainingContent() {
   const handleVideoLoad = useCallback(() => {
     if (videoRef.current) {
       const video = videoRef.current;
-      const width = video.videoWidth || 1280;
-      const height = video.videoHeight || 720;
-      setCurrentTime(videoRef.current.currentTime);
+      let width = video.videoWidth;
+      let height = video.videoHeight;
 
+      // Fallback to defaults if still 0 (will be set by onPlay event for cameras)
       setVideoDimensions({ width, height });
       updateCanvasDimensions();
       addTerminalLog(`✓ Video loaded: ${width}x${height}`);
@@ -4785,7 +4851,7 @@ export default function TrainingContent() {
     const token = localStorage.getItem("access_token")
     if (!token) return
 
-    authFetch("https://localhost:8000/api/auth/me")
+    authFetch(`https://${NEXT_PUBLIC_BACKEND_URL}/api/auth/me`)
       .then(res => res.json())
       .then(data => {
         setUser(data)
@@ -4796,6 +4862,7 @@ export default function TrainingContent() {
         setIsLoggedIn(false)
       })
   }, [])
+
   const Header = () => (
     <header className={`shrink-0 h-13 ${ds.colors.surfaceBlur} border-b ${ds.colors.borderSubtle} flex items-center px-6 justify-between z-50`}>
       <div className="flex items-center gap-3">
@@ -5082,7 +5149,7 @@ export default function TrainingContent() {
                       handleInputSourceChange("upload");
                       fileInputRef.current?.click();
                     }}
-                    className={`${toolbarIconButton} ${openDropdown === 'inputSource' ? '!text-blue-400 !border-blue-500/30 bg-blue-500/10' : ''}`}
+                    className={`${toolbarIconButton} ${openDropdown === 'inputSource' ? 'text-blue-400! border-blue-500/30! bg-blue-500/10' : ''}`}
                     title="Upload Video"
                   >
                     <Upload className="w-4 h-4" />
@@ -5103,7 +5170,7 @@ export default function TrainingContent() {
                           await startCamera();
                         }
                       }}
-                      className={`${toolbarIconButton} ${inputSource === 'camera' ? '!text-blue-400 !border-blue-500/30 bg-blue-500/10' : ''}`}
+                      className={`${toolbarIconButton} ${inputSource === 'camera' ? 'text-blue-400! border-blue-500/30! bg-blue-500/10' : ''}`}
                       title="Live Camera"
                     >
                       <Camera className="w-4 h-4" />
@@ -5163,7 +5230,7 @@ export default function TrainingContent() {
                         handleInputSourceChange('oak');
                         await startOakCamera();
                       }}
-                      className={`${toolbarIconButton} ${inputSource === 'oak' ? '!text-blue-400 !border-blue-500/30 bg-blue-500/10' : ''}`}
+                      className={`${toolbarIconButton} ${inputSource === 'oak' ? 'text-blue-400! border-blue-500/30! bg-blue-500/10' : ''}`}
                       title="Neuron Camera"
                     >
                       <Cpu className="w-4 h-4" />
@@ -5175,7 +5242,7 @@ export default function TrainingContent() {
                         handleInputSourceChange('remote');
                         startRemoteCameraSession();
                       }}
-                      className={`${toolbarIconButton} ${inputSource === 'remote' ? '!text-emerald-400 !border-emerald-500/30 bg-emerald-500/10' : ''}`}
+                      className={`${toolbarIconButton} ${inputSource === 'remote' ? 'text-emerald-400! border-emerald-500/30! bg-emerald-500/10' : ''}`}
                       title="Remote Stream"
                     >
                       <Smartphone className="w-4 h-4" />
@@ -5208,7 +5275,7 @@ export default function TrainingContent() {
                       setDrawingMode('select');
                     }}
 
-                    className={`${toolbarIconButton} ${roiToolsVisible ? '!text-blue-400 !border-blue-500/30 bg-blue-500/10' : ''}`}
+                    className={`${toolbarIconButton} ${roiToolsVisible ? 'text-blue-400! border-blue-500/30! bg-blue-500/10' : ''}`}
                     title="ROI Tools"
                   >
                     <Target className="w-4 h-4" />
@@ -5217,7 +5284,7 @@ export default function TrainingContent() {
 
                 <button
                   onClick={() => togglePanel("terminal")}
-                  className={`${toolbarIconButton} ${showTerminal ? '!text-blue-400 !border-blue-500/30 bg-blue-500/10' : ''}`}
+                  className={`${toolbarIconButton} ${showTerminal ? 'text-blue-400! border-blue-500/30! bg-blue-500/10' : ''}`}
                   title="Terminal"
                 >
                   <Terminal className="w-4 h-4" />
@@ -5225,7 +5292,7 @@ export default function TrainingContent() {
 
                 <button
                   onClick={() => togglePanel('instructions')}
-                  className={`${toolbarIconButton} ${showInstructions ? '!text-blue-400 !border-blue-500/30 bg-blue-500/10' : ''}`}
+                  className={`${toolbarIconButton} ${showInstructions ? 'text-blue-400! border-blue-500/30! bg-blue-500/10' : ''}`}
                   title="Instructions"
                 >
                   <HelpCircle className="w-4 h-4" />
@@ -5283,7 +5350,7 @@ export default function TrainingContent() {
               />
 
               {showUpload && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-100 flex items-center justify-center p-4">
                   {/* Simple modal container */}
                   <div className={`relative ${panelCard} p-6 max-w-sm w-full`}>
                     {/* Close button */}
@@ -5525,14 +5592,48 @@ export default function TrainingContent() {
                 )}
 
                 {inputSource === 'camera' && (
-                  <video
-                    ref={videoRef}
-                    className={`absolute inset-0 h-full w-full object-contain transition-opacity duration-300 ${inferenceSourceVisibilityClass}`}
-                    autoPlay
-                    muted
-                    playsInline
-                    onLoadedMetadata={handleVideoLoad}
-                  />
+                  <div className="absolute inset-0 overflow-hidden">
+                    <video
+                      ref={videoRef}
+                      className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${inferenceSourceVisibilityClass}`}
+                      autoPlay
+                      muted
+                      playsInline
+                      onPlay={() => {
+                        // For MediaStreams, dimensions become available when video plays
+                        if (videoRef.current && videoRef.current.videoWidth > 0 && videoRef.current.videoHeight > 0) {
+                          const width = videoRef.current.videoWidth;
+                          const height = videoRef.current.videoHeight;
+                          setVideoDimensions({ width, height });
+                          updateCanvasDimensions();
+                          addTerminalLog(`✓ Camera playing: ${width}x${height}`);
+                        }
+                      }}
+                      onLoadedMetadata={handleVideoLoad}
+                      onClick={(e) => {
+                        if (videoRef.current?.paused) {
+                          videoRef.current.play().catch(err => {
+                            addTerminalLog(`❌ Playback error: ${err.message}`);
+                          });
+                        }
+                      }}
+                    />
+                    {cameraError && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/75 text-white p-4 text-center">
+                        <div>
+                          <div className="font-semibold text-sm">Camera error</div>
+                          <div className="text-xs mt-2">{cameraError}</div>
+                          <button
+                            onClick={() => setCameraError(null)}
+                            className="mt-3 inline-flex rounded-md bg-blue-600 px-3 py-1 text-xs font-medium hover:bg-blue-500"
+                            type="button"
+                          >
+                            Dismiss
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )}
 
                 {inputSource === 'remote' && remoteCameraFrame && (

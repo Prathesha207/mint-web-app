@@ -237,7 +237,7 @@ export default function InferenceClientPage() {
   const fullscreenImageRef = useRef<HTMLImageElement>(null);
   const popupRefreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const NEXT_PUBLIC_BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'localhost:8000';
+  const NEXT_PUBLIC_BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'games-measure-gap-rows.trycloudflare.com';
 
   // Colors for visualizations
   const roiColors = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#6366f1', '#06b6d4', '#f97316'];
@@ -1202,6 +1202,11 @@ export default function InferenceClientPage() {
     }
 
     try {
+      // Check if browser is HTTPS (required for camera access)
+      if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+        addTerminalLog('⚠️  HTTPS required for camera access (except on localhost)');
+      }
+
       addTerminalLog('Starting webcam...');
 
       const constraints: MediaStreamConstraints = {
@@ -1274,7 +1279,33 @@ export default function InferenceClientPage() {
 
     } catch (error: any) {
       console.error('Error accessing camera:', error);
-      addTerminalLog(`❌ Error accessing camera: ${error.message}`);
+      const errorName = error.name || 'UnknownError';
+      const errorMsg = error.message || 'Unknown error';
+
+      // Handle specific error types
+      if (errorName === 'NotAllowedError') {
+        addTerminalLog('❌ Camera permission denied!');
+        addTerminalLog('📋 To fix: Check browser permissions for camera access');
+        addTerminalLog('📋 Steps:');
+        addTerminalLog('   1. Look for a camera icon or settings in the URL bar');
+        addTerminalLog('   2. Click and select "Allow" for camera');
+        addTerminalLog('   3. Then try again');
+        alert('📷 Camera Permission Denied!\n\nPlease allow camera access:\n1. Look for a lock/camera icon in the address bar\n2. Click and select "Allow" for camera permission\n3. Refresh and try again');
+      } else if (errorName === 'NotFoundError' || errorName === 'DevicesNotFoundError') {
+        addTerminalLog('❌ No camera device found');
+        addTerminalLog('📋 Please check if a camera is connected to your device');
+        alert('No camera found. Please connect a camera device.');
+      } else if (errorName === 'NotReadableError' || errorName === 'TrackStartError') {
+        addTerminalLog('❌ Camera is in use by another application');
+        addTerminalLog('📋 Close other apps using the camera (Teams, Zoom, etc.)');
+        alert('Camera is already in use by another application.\n\nPlease close other apps using the camera (Teams, Zoom, Discord, etc.)');
+      } else if (errorName === 'SecurityError') {
+        addTerminalLog('❌ Security error - HTTPS required');
+        addTerminalLog('📋 Camera access requires HTTPS (secure connection)');
+        alert('Security Error: Camera requires HTTPS connection');
+      } else {
+        addTerminalLog(`❌ Error accessing camera: ${errorName}: ${errorMsg}`);
+      }
 
       // Try with more permissive constraints
       if (deviceId) {
@@ -1298,11 +1329,8 @@ export default function InferenceClientPage() {
             }
           }, 100);
         } catch (fallbackError: any) {
-          addTerminalLog(`❌ Could not access camera ${deviceId}: ${fallbackError.message}`);
-          alert(`Could not access camera ${deviceId}. Please check permissions and try again.`);
+          addTerminalLog(`❌ Fallback failed: ${fallbackError.name || 'Unknown'} - ${fallbackError.message}`);
         }
-      } else {
-        alert('Could not access camera. Please check permissions and try again.');
       }
     }
   };
