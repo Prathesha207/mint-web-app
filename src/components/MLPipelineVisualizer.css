@@ -6,7 +6,7 @@
   padding: 30px;
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
   color: #ffffff;
-  box-shadow: 
+  box-shadow:
     0 20px 60px rgba(0, 0, 0, 0.8),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
   position: relative;
@@ -21,13 +21,12 @@
   left: 0;
   right: 0;
   height: 2px;
-  background: linear-gradient(90deg, 
-    transparent, 
-    #00ff88, 
-    #00ccff, 
-    #ff00ff, 
-    transparent
-  );
+  background: linear-gradient(90deg,
+      transparent,
+      #00ff88,
+      #00ccff,
+      #ff00ff,
+      transparent);
   animation: scanBorder 4s linear infinite;
 }
 
@@ -64,10 +63,25 @@
   animation: pulse 2s infinite;
 }
 
-.status-indicator.preprocessing { background: #00ff88; box-shadow: 0 0 20px #00ff88; }
-.status-indicator.featureExtraction { background: #00ccff; box-shadow: 0 0 20px #00ccff; }
-.status-indicator.training { background: #ff00ff; box-shadow: 0 0 20px #ff00ff; }
-.status-indicator.analysis { background: #ffaa00; box-shadow: 0 0 20px #ffaa00; }
+.status-indicator.preprocessing {
+  background: #00ff88;
+  box-shadow: 0 0 20px #00ff88;
+}
+
+.status-indicator.featureExtraction {
+  background: #00ccff;
+  box-shadow: 0 0 20px #00ccff;
+}
+
+.status-indicator.training {
+  background: #ff00ff;
+  box-shadow: 0 0 20px #ff00ff;
+}
+
+.status-indicator.analysis {
+  background: #ffaa00;
+  box-shadow: 0 0 20px #ffaa00;
+}
 
 .status-text {
   font-size: 16px;
@@ -104,7 +118,7 @@
   background: rgba(0, 20, 40, 0.6);
   border-color: #00ccff;
   transform: translateY(-5px);
-  box-shadow: 
+  box-shadow:
     0 10px 30px rgba(0, 204, 255, 0.3),
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
@@ -246,12 +260,10 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(
-    to bottom,
-    transparent 0%,
-    rgba(0, 255, 136, 0.1) 50%,
-    transparent 100%
-  );
+  background: linear-gradient(to bottom,
+      transparent 0%,
+      rgba(0, 255, 136, 0.1) 50%,
+      transparent 100%);
   animation: overlayScan 4s ease-in-out infinite;
 }
 
@@ -470,11 +482,10 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(45deg, 
-    rgba(255, 0, 0, 0.1),
-    rgba(0, 255, 0, 0.1),
-    rgba(0, 0, 255, 0.1)
-  );
+  background: linear-gradient(45deg,
+      rgba(255, 0, 0, 0.1),
+      rgba(0, 255, 0, 0.1),
+      rgba(0, 0, 255, 0.1));
   animation: colorShift 3s ease-in-out infinite;
 }
 
@@ -868,11 +879,25 @@
   justify-content: center;
 }
 
-.input-layer { left: 5%; }
-.hidden-layer:nth-child(2) { left: 25%; }
-.hidden-layer:nth-child(3) { left: 45%; }
-.hidden-layer:nth-child(4) { left: 65%; }
-.output-layer { left: 85%; }
+.input-layer {
+  left: 5%;
+}
+
+.hidden-layer:nth-child(2) {
+  left: 25%;
+}
+
+.hidden-layer:nth-child(3) {
+  left: 45%;
+}
+
+.hidden-layer:nth-child(4) {
+  left: 65%;
+}
+
+.output-layer {
+  left: 85%;
+}
 
 .layer-title {
   font-size: 12px;
@@ -1507,157 +1532,348 @@
 
 /* Animations */
 @keyframes scanBorder {
-  0% { background-position: -100% 0; }
-  100% { background-position: 200% 0; }
+  0% {
+    background-position: -100% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(1.1); }
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.5;
+    transform: scale(1.1);
+  }
 }
 
 @keyframes glowPulse {
-  0%, 100% { opacity: 0.3; transform: translate(-50%, -50%) scale(1); }
-  50% { opacity: 0.6; transform: translate(-50%, -50%) scale(1.1); }
+
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: translate(-50%, -50%) scale(1);
+  }
+
+  50% {
+    opacity: 0.6;
+    transform: translate(-50%, -50%) scale(1.1);
+  }
 }
 
 @keyframes connectorFlow {
-  0% { left: -100%; }
-  100% { left: 100%; }
+  0% {
+    left: -100%;
+  }
+
+  100% {
+    left: 100%;
+  }
 }
 
 @keyframes arrowPulse {
-  0%, 100% { opacity: 0.5; transform: translateY(-50%); }
-  50% { opacity: 1; transform: translateY(-50%) scale(1.2); }
+
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: translateY(-50%);
+  }
+
+  50% {
+    opacity: 1;
+    transform: translateY(-50%) scale(1.2);
+  }
 }
 
 @keyframes verticalScan {
-  0% { top: 0; }
-  100% { top: 100%; }
+  0% {
+    top: 0;
+  }
+
+  100% {
+    top: 100%;
+  }
 }
 
 @keyframes overlayScan {
-  0%, 100% { opacity: 0.1; transform: translateY(-100%); }
-  50% { opacity: 0.3; transform: translateY(100%); }
+
+  0%,
+  100% {
+    opacity: 0.1;
+    transform: translateY(-100%);
+  }
+
+  50% {
+    opacity: 0.3;
+    transform: translateY(100%);
+  }
 }
 
 @keyframes playPulse {
-  0%, 100% { box-shadow: 0 0 20px #00ff88; }
-  50% { box-shadow: 0 0 40px #00ff88; }
+
+  0%,
+  100% {
+    box-shadow: 0 0 20px #00ff88;
+  }
+
+  50% {
+    box-shadow: 0 0 40px #00ff88;
+  }
 }
 
 @keyframes shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 @keyframes pixelScan {
-  0% { top: 0; }
-  100% { top: 100%; }
+  0% {
+    top: 0;
+  }
+
+  100% {
+    top: 100%;
+  }
 }
 
 @keyframes colorShift {
-  0%, 100% { opacity: 0.1; }
-  50% { opacity: 0.3; }
+
+  0%,
+  100% {
+    opacity: 0.1;
+  }
+
+  50% {
+    opacity: 0.3;
+  }
 }
 
 @keyframes stepPulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.5); }
+
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.5);
+  }
 }
 
 @keyframes arrowFlow {
-  0%, 100% { opacity: 0.5; transform: translateX(0); }
-  50% { opacity: 1; transform: translateX(5px); }
+
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: translateX(0);
+  }
+
+  50% {
+    opacity: 1;
+    transform: translateX(5px);
+  }
 }
 
 @keyframes kernelFloat {
-  0%, 100% { transform: translate(0, 0) rotate(0deg); }
-  25% { transform: translate(10px, -10px) rotate(90deg); }
-  50% { transform: translate(0, -20px) rotate(180deg); }
-  75% { transform: translate(-10px, -10px) rotate(270deg); }
+
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+
+  25% {
+    transform: translate(10px, -10px) rotate(90deg);
+  }
+
+  50% {
+    transform: translate(0, -20px) rotate(180deg);
+  }
+
+  75% {
+    transform: translate(-10px, -10px) rotate(270deg);
+  }
 }
 
 @keyframes kernelPulse {
-  0% { opacity: 0.3; }
-  100% { opacity: 0.8; }
+  0% {
+    opacity: 0.3;
+  }
+
+  100% {
+    opacity: 0.8;
+  }
 }
 
 @keyframes mapGlow {
-  0% { box-shadow: 0 0 10px rgba(0, 204, 255, 0.3); }
-  100% { box-shadow: 0 0 20px rgba(0, 204, 255, 0.6); }
+  0% {
+    box-shadow: 0 0 10px rgba(0, 204, 255, 0.3);
+  }
+
+  100% {
+    box-shadow: 0 0 20px rgba(0, 204, 255, 0.6);
+  }
 }
 
 @keyframes arrowBounce {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(5px); }
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(5px);
+  }
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes chartScan {
-  0% { left: -100%; }
-  100% { left: 100%; }
+  0% {
+    left: -100%;
+  }
+
+  100% {
+    left: 100%;
+  }
 }
 
 @keyframes backpropFlow {
-  0% { opacity: 0; transform: translateY(0) rotate(0deg); }
-  50% { opacity: 1; transform: translateY(-20px) rotate(180deg); }
-  100% { opacity: 0; transform: translateY(-40px) rotate(360deg); }
+  0% {
+    opacity: 0;
+    transform: translateY(0) rotate(0deg);
+  }
+
+  50% {
+    opacity: 1;
+    transform: translateY(-20px) rotate(180deg);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-40px) rotate(360deg);
+  }
 }
 
 @keyframes filePulse {
-  0%, 100% { border-color: rgba(0, 255, 136, 0.4); }
-  50% { border-color: rgba(0, 255, 136, 0.8); }
+
+  0%,
+  100% {
+    border-color: rgba(0, 255, 136, 0.4);
+  }
+
+  50% {
+    border-color: rgba(0, 255, 136, 0.8);
+  }
 }
 
 @keyframes byteFlow {
-  0% { top: 0; opacity: 0; }
-  10% { opacity: 1; }
-  90% { opacity: 1; }
-  100% { top: 100%; opacity: 0; }
+  0% {
+    top: 0;
+    opacity: 0;
+  }
+
+  10% {
+    opacity: 1;
+  }
+
+  90% {
+    opacity: 1;
+  }
+
+  100% {
+    top: 100%;
+    opacity: 0;
+  }
 }
 
 @keyframes progressShine {
-  0% { right: 100%; }
-  100% { right: -20px; }
+  0% {
+    right: 100%;
+  }
+
+  100% {
+    right: -20px;
+  }
 }
 
 @keyframes successPulse {
-  0%, 100% { box-shadow: 0 0 20px rgba(0, 255, 136, 0.3); }
-  50% { box-shadow: 0 0 40px rgba(0, 255, 136, 0.6); }
+
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+  }
+
+  50% {
+    box-shadow: 0 0 40px rgba(0, 255, 136, 0.6);
+  }
 }
 
 @keyframes checkmarkBounce {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.1); }
+
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.1);
+  }
 }
 
 @keyframes livePulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(1.2); }
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.5;
+    transform: scale(1.2);
+  }
 }
 
 /* Responsive Design */
 @media (max-width: 1200px) {
+
   .feature-extraction-visualization,
   .training-visualization,
   .model-analysis-container {
     grid-template-columns: 1fr;
     height: auto;
   }
-  
+
   .video-processing-container {
     grid-template-columns: 1fr;
   }
-  
+
   .frames-container {
     grid-template-columns: repeat(3, 1fr);
   }
-  
+
   .deployment-options {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -1667,33 +1883,33 @@
   .ml-workflow-visualizer {
     padding: 15px;
   }
-  
+
   .stage-navigation {
     flex-wrap: wrap;
     gap: 10px;
   }
-  
+
   .nav-item {
     min-width: 100px;
     padding: 15px;
   }
-  
+
   .nav-connector {
     display: none;
   }
-  
+
   .frames-container {
     grid-template-columns: repeat(2, 1fr);
   }
-  
+
   .evaluation-metrics {
     grid-template-columns: 1fr;
   }
-  
+
   .model-info {
     grid-template-columns: 1fr;
   }
-  
+
   .system-info {
     flex-direction: column;
     gap: 10px;
