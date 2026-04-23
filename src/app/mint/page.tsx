@@ -389,7 +389,8 @@ export default function TrainingContent() {
 
 
   // Backend extraction states
-  const [backendExtractionMode, setBackendExtractionMode] = useState(false);
+  const [trainingBackendExtractionMode, setTrainingBackendExtractionMode] = useState(false);
+  const [inferenceBackendExtractionMode, setInferenceBackendExtractionMode] = useState(false);
   const [extractionJobId, setExtractionJobId] = useState<string | null>(null);
   const [extractionStatus, setExtractionStatus] = useState<'idle' | 'uploading' | 'processing' | 'completed' | 'failed'>('idle');
   const [extractionProgress, setExtractionProgress] = useState(0);
@@ -398,13 +399,16 @@ export default function TrainingContent() {
   const [autoUploadToBackend, setAutoUploadToBackend] = useState(true);
 
   // Video playback states
-  const [isStaticFrameMode, setIsStaticFrameMode] = useState(false);
-  const [staticFrameImage, setStaticFrameImage] = useState<HTMLImageElement | null>(null);
+  const [trainingIsStaticFrameMode, setTrainingIsStaticFrameMode] = useState(false);
+  const [inferenceIsStaticFrameMode, setInferenceIsStaticFrameMode] = useState(false);
+  const [trainingStaticFrameImage, setTrainingStaticFrameImage] = useState<HTMLImageElement | null>(null);
+  const [inferenceStaticFrameImage, setInferenceStaticFrameImage] = useState<HTMLImageElement | null>(null);
   const staticFrameRef = useRef<HTMLImageElement | null>(null);
   const extractorVideoRef = useRef<HTMLVideoElement | null>(null);
 
   type PlaybackMode = 'video' | 'frames' | 'backend';
-  const [playbackMode, setPlaybackMode] = useState<PlaybackMode>('video');
+  const [trainingPlaybackMode, setTrainingPlaybackMode] = useState<PlaybackMode>('video');
+  const [inferencePlaybackMode, setInferencePlaybackMode] = useState<PlaybackMode>('video');
   const [currentFrame, setCurrentFrame] = useState(0);
   const [totalFrames, setTotalFrames] = useState(0);
 
@@ -468,6 +472,29 @@ export default function TrainingContent() {
     else setInferenceSelectedROI(val);
   };
   const activeRois = viewMode === 'training' ? rois : inferenceRois;
+  const backendExtractionMode =
+    viewMode === 'training' ? trainingBackendExtractionMode : inferenceBackendExtractionMode;
+  const setBackendExtractionMode = (val: boolean) => {
+    if (viewMode === 'training') setTrainingBackendExtractionMode(val);
+    else setInferenceBackendExtractionMode(val);
+  };
+  const isStaticFrameMode =
+    viewMode === 'training' ? trainingIsStaticFrameMode : inferenceIsStaticFrameMode;
+  const setIsStaticFrameMode = (val: boolean) => {
+    if (viewMode === 'training') setTrainingIsStaticFrameMode(val);
+    else setInferenceIsStaticFrameMode(val);
+  };
+  const staticFrameImage =
+    viewMode === 'training' ? trainingStaticFrameImage : inferenceStaticFrameImage;
+  const setStaticFrameImage = (val: HTMLImageElement | null) => {
+    if (viewMode === 'training') setTrainingStaticFrameImage(val);
+    else setInferenceStaticFrameImage(val);
+  };
+  const playbackMode = viewMode === 'training' ? trainingPlaybackMode : inferencePlaybackMode;
+  const setPlaybackMode = (val: PlaybackMode) => {
+    if (viewMode === 'training') setTrainingPlaybackMode(val);
+    else setInferencePlaybackMode(val);
+  };
 
   useEffect(() => {
     remoteSessionRef.current = remoteCameraSession;
@@ -2935,7 +2962,7 @@ export default function TrainingContent() {
       return;
     }
 
-    if (!file || !videoRef.current || !canvasRef.current) return;
+    if (!file || !canvasRef.current) return;
 
     const url = URL.createObjectURL(file);
     setVideoFile(file);
@@ -2945,13 +2972,13 @@ export default function TrainingContent() {
     setBackendExtractionMode(false);
     setExtractionStatus('idle');
 
-    const video = videoRef.current;
-    video.src = url;
+    const previewVideo = videoRef.current ?? document.createElement('video');
+    previewVideo.src = url;
 
     addTerminalLog(`📂 Video uploaded: ${file.name}`);
     addTerminalLog(`🔍 Checking video codec support...`);
 
-    const supported = await checkVideoSupport(video);
+    const supported = await checkVideoSupport(previewVideo);
 
     // Prepare extractor video
     if (extractorVideoRef.current) {
@@ -2966,9 +2993,9 @@ export default function TrainingContent() {
       setPlaybackMode('video');
       setIsStaticFrameMode(false);
 
-      video.addEventListener('loadedmetadata', () => {
-        const width = video.videoWidth || 1280;
-        const height = video.videoHeight || 720;
+      previewVideo.addEventListener('loadedmetadata', () => {
+        const width = previewVideo.videoWidth || 1280;
+        const height = previewVideo.videoHeight || 720;
         setVideoDimensions({ width, height });
         updateCanvasDimensions();
         addTerminalLog(`✅ Video supported. Using native playback.`);
@@ -3290,6 +3317,30 @@ export default function TrainingContent() {
       });
     }
   }, [viewMode, inputSource]);
+
+  useEffect(() => {
+    const videoElement = videoRef.current;
+    if (!videoElement) return;
+
+    const shouldRenderUploadVideo =
+      inputSource === 'upload' &&
+      playbackMode === 'video' &&
+      !backendExtractionMode &&
+      Boolean(videoUrl);
+
+    if (shouldRenderUploadVideo) {
+      return;
+    }
+
+    if (videoElement.srcObject) {
+      return;
+    }
+
+    videoElement.pause();
+    videoElement.removeAttribute('src');
+    videoElement.load();
+    setIsPlaying(false);
+  }, [backendExtractionMode, inputSource, playbackMode, videoUrl, viewMode]);
 
   const hoveredROIData = hoveredROI ? rois.find((roi) => roi.id === hoveredROI) ?? null : null;
   const showLegacyHoverOverlay = false;
@@ -6975,8 +7026,9 @@ export default function TrainingContent() {
                   />
                 )}
 
-                {inputSource === 'upload' && playbackMode === 'video' && !backendExtractionMode && (
+                {inputSource === 'upload' && playbackMode === 'video' && !backendExtractionMode && !!videoUrl && (
                   <video
+                    key={`${viewMode}-${videoUrl}`}
                     ref={videoRef}
                     src={videoUrl}
                     className={`absolute inset-0 h-full w-full object-contain transition-opacity duration-300 ${inferenceSourceVisibilityClass}`}
