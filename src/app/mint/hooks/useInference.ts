@@ -1,5 +1,6 @@
 import { ChangeEvent, RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { authFetch } from '../../lib/authFetch';
+import { useCameraShutterDetection } from './useCameraShutterDetection';
 
 export type InferenceInputSource = 'upload' | 'camera' | 'oak' | 'remote';
 
@@ -466,6 +467,10 @@ export function useInference({
     () => false,
     []
   );
+
+  // Camera shutter detection for live streams
+  const { verifyCameraBeforeAction: verifyCameraForInference } =
+    useCameraShutterDetection();
 
   const setFollowLiveFrame = useCallback((nextValue: boolean) => {
     isFollowingLiveFrameRef.current = nextValue;
@@ -2429,6 +2434,25 @@ export function useInference({
 
     // PRIORITY: CAMERA/OAK/REMOTE take precedence over uploaded files
     if (inputSource === 'camera' || inputSource === 'oak' || inputSource === 'remote') {
+      // Verify camera is live before starting inference
+      if (inputSource === 'camera') {
+        addTerminalLog('🔍 Verifying camera hardware stream...');
+        console.log('[Inference] Starting camera verification...');
+        try {
+          const isCameraLive = await verifyCameraForInference(videoRef.current, 'inference');
+          console.log('[Inference] Camera verification result:', isCameraLive);
+          if (!isCameraLive) {
+            setIsProcessing(false);
+            addTerminalLog('❌ Inference blocked: Camera shutter detected or camera feed is static');
+            return;
+          }
+          addTerminalLog('✅ Camera verification passed - proceeding with inference...');
+        } catch (error) {
+          console.error('[Inference] Camera verification error:', error);
+          addTerminalLog('⚠️ Camera verification encountered an error but proceeding anyway...');
+        }
+      }
+
       if (inputSource === 'oak' && isOakStreaming) {
         connectInferenceWebSocket();
       } else {

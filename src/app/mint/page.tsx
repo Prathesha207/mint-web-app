@@ -166,6 +166,7 @@ import InferenceControls from './components/inference/InferenceControls';
 import InferenceModelDropdown from './components/inference/ModelSelection';
 import InferenceSettings from './components/inference/InferenceSettings';
 import { InferenceModel, useInference } from './hooks/useInference';
+import { useCameraShutterDetection } from './hooks/useCameraShutterDetection';
 import React from 'react';
 import { showToast } from './lib/toast';
 import BackendExtractionCard from './components/BackendExtraction';
@@ -193,11 +194,48 @@ export default function TrainingContent() {
   const [hoveredROI, setHoveredROI] = useState<string | null>(null);
   // State management
   const [activeTab, setActiveTab] = useState<'setup' | 'record' | 'review' | 'train'>('setup');
-  const [inputSource, setInputSource] = useState<'upload' | 'camera' | 'oak' | 'remote'>('upload');
-  const [videoFile, setVideoFile] = useState<File | null>(null);
-  const [videoUrl, setVideoUrl] = useState<string>('');
-  const [isRecording, setIsRecording] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
+
+  // TRAINING: Input source and video state (isolated from inference)
+  const [trainingInputSource, setTrainingInputSource] = useState<'upload' | 'camera' | 'oak' | 'remote'>('upload');
+  const [trainingVideoFile, setTrainingVideoFile] = useState<File | null>(null);
+  const [trainingVideoUrl, setTrainingVideoUrl] = useState<string>('');
+  const [trainingIsRecording, setTrainingIsRecording] = useState(false);
+  const [trainingIsPlaying, setTrainingIsPlaying] = useState(false);
+
+  // INFERENCE: Input source and video state (isolated from training)
+  const [inferenceInputSource, setInferenceInputSource] = useState<'upload' | 'camera' | 'oak' | 'remote'>('upload');
+  const [inferenceVideoFile, setInferenceVideoFile] = useState<File | null>(null);
+  const [inferenceVideoUrl, setInferenceVideoUrl] = useState<string>('');
+  const [inferenceIsRecording, setInferenceIsRecording] = useState(false);
+  const [inferenceIsPlaying, setInferenceIsPlaying] = useState(false);
+
+  // Helper: Get current mode's input source and video state
+  const inputSource = viewMode === 'training' ? trainingInputSource : inferenceInputSource;
+  const setInputSource = (val: 'upload' | 'camera' | 'oak' | 'remote') => {
+    if (viewMode === 'training') setTrainingInputSource(val);
+    else setInferenceInputSource(val);
+  };
+  const videoFile = viewMode === 'training' ? trainingVideoFile : inferenceVideoFile;
+  const setVideoFile = (val: File | null) => {
+    if (viewMode === 'training') setTrainingVideoFile(val);
+    else setInferenceVideoFile(val);
+  };
+  const videoUrl = viewMode === 'training' ? trainingVideoUrl : inferenceVideoUrl;
+  const setVideoUrl = (val: string) => {
+    if (viewMode === 'training') setTrainingVideoUrl(val);
+    else setInferenceVideoUrl(val);
+  };
+  const isRecording = viewMode === 'training' ? trainingIsRecording : inferenceIsRecording;
+  const setIsRecording = (val: boolean) => {
+    if (viewMode === 'training') setTrainingIsRecording(val);
+    else setInferenceIsRecording(val);
+  };
+  const isPlaying = viewMode === 'training' ? trainingIsPlaying : inferenceIsPlaying;
+  const setIsPlaying = (val: boolean) => {
+    if (viewMode === 'training') setTrainingIsPlaying(val);
+    else setInferenceIsPlaying(val);
+  };
+
   const [drawingMode, setDrawingMode] = useState<'rectangle' | 'polygon' | 'select'>('select');
   const [rois, setRois] = useState<ROI[]>([]);
   const [inferenceRois, setInferenceRois] = useState<ROI[]>([]);
@@ -208,7 +246,8 @@ export default function TrainingContent() {
   const [sessionName, setSessionName] = useState<string>('');
   const [recordingProgress, setRecordingProgress] = useState(0);
   const [backendConnected, setBackendConnected] = useState(false);
-  const [selectedROI, setSelectedROI] = useState<string | null>(null);
+  const [trainingSelectedROI, setTrainingSelectedROI] = useState<string | null>(null);
+  const [inferenceSelectedROI, setInferenceSelectedROI] = useState<string | null>(null);
   const [videoDimensions, setVideoDimensions] = useState({ width: 1280, height: 720 });
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -254,20 +293,94 @@ export default function TrainingContent() {
   const [lastSaveStatus, setLastSaveStatus] = useState<string>('');
   const [isCapturingTrainingFrames, setIsCapturingTrainingFrames] = useState(false);
 
-  // OAK Camera states
-  const [oakCameraState, setOakCameraState] = useState<'idle' | 'streaming' | 'error'>('idle');
-  const [oakDevices, setOakDevices] = useState<CameraDevice[]>([]);
-  const [selectedDevice, setSelectedDevice] = useState<string>('');
-  const [isOakStreaming, setIsOakStreaming] = useState(false);
-  const [streamUrl, setStreamUrl] = useState<string>('');
+  // OAK Camera states - TRAINING
+  const [trainingOakCameraState, setTrainingOakCameraState] = useState<'idle' | 'streaming' | 'error'>('idle');
+  const [trainingOakDevices, setTrainingOakDevices] = useState<CameraDevice[]>([]);
+  const [trainingSelectedDevice, setTrainingSelectedDevice] = useState<string>('');
+  const [trainingIsOakStreaming, setTrainingIsOakStreaming] = useState(false);
+  const [trainingStreamUrl, setTrainingStreamUrl] = useState<string>('');
 
-  // Camera selection states
-  const [availableCameras, setAvailableCameras] = useState<MediaDeviceInfo[]>([]);
-  const [selectedCameraId, setSelectedCameraId] = useState<string>('');
-  const [showCameraSelection, setShowCameraSelection] = useState(false);
-  const [isLoadingCameras, setIsLoadingCameras] = useState(false);
-  const [currentCameraStream, setCurrentCameraStream] = useState<MediaStream | null>(null);
-  const [cameraError, setCameraError] = useState<string | null>(null);
+  // OAK Camera states - INFERENCE
+  const [inferenceOakCameraState, setInferenceOakCameraState] = useState<'idle' | 'streaming' | 'error'>('idle');
+  const [inferenceOakDevices, setInferenceOakDevices] = useState<CameraDevice[]>([]);
+  const [inferenceSelectedDevice, setInferenceSelectedDevice] = useState<string>('');
+  const [inferenceIsOakStreaming, setInferenceIsOakStreaming] = useState(false);
+  const [inferenceStreamUrl, setInferenceStreamUrl] = useState<string>('');
+
+  // Helper: Get current mode's OAK camera state
+  const oakCameraState = viewMode === 'training' ? trainingOakCameraState : inferenceOakCameraState;
+  const setOakCameraState = (val: 'idle' | 'streaming' | 'error') => {
+    if (viewMode === 'training') setTrainingOakCameraState(val);
+    else setInferenceOakCameraState(val);
+  };
+  const oakDevices = viewMode === 'training' ? trainingOakDevices : inferenceOakDevices;
+  const setOakDevices = (val: CameraDevice[]) => {
+    if (viewMode === 'training') setTrainingOakDevices(val);
+    else setInferenceOakDevices(val);
+  };
+  const selectedDevice = viewMode === 'training' ? trainingSelectedDevice : inferenceSelectedDevice;
+  const setSelectedDevice = (val: string) => {
+    if (viewMode === 'training') setTrainingSelectedDevice(val);
+    else setInferenceSelectedDevice(val);
+  };
+  const isOakStreaming = viewMode === 'training' ? trainingIsOakStreaming : inferenceIsOakStreaming;
+  const setIsOakStreaming = (val: boolean) => {
+    if (viewMode === 'training') setTrainingIsOakStreaming(val);
+    else setInferenceIsOakStreaming(val);
+  };
+  const streamUrl = viewMode === 'training' ? trainingStreamUrl : inferenceStreamUrl;
+  const setStreamUrl = (val: string) => {
+    if (viewMode === 'training') setTrainingStreamUrl(val);
+    else setInferenceStreamUrl(val);
+  };
+
+  // Camera selection states - TRAINING
+  const [trainingAvailableCameras, setTrainingAvailableCameras] = useState<MediaDeviceInfo[]>([]);
+  const [trainingSelectedCameraId, setTrainingSelectedCameraId] = useState<string>('');
+  const [trainingShowCameraSelection, setTrainingShowCameraSelection] = useState(false);
+  const [trainingIsLoadingCameras, setTrainingIsLoadingCameras] = useState(false);
+  const [trainingCurrentCameraStream, setTrainingCurrentCameraStream] = useState<MediaStream | null>(null);
+  const [trainingCameraError, setTrainingCameraError] = useState<string | null>(null);
+
+  // Camera selection states - INFERENCE
+  const [inferenceAvailableCameras, setInferenceAvailableCameras] = useState<MediaDeviceInfo[]>([]);
+  const [inferenceSelectedCameraId, setInferenceSelectedCameraId] = useState<string>('');
+  const [inferenceShowCameraSelection, setInferenceShowCameraSelection] = useState(false);
+  const [inferenceIsLoadingCameras, setInferenceIsLoadingCameras] = useState(false);
+  const [inferenceCurrentCameraStream, setInferenceCurrentCameraStream] = useState<MediaStream | null>(null);
+  const [inferenceCameraError, setInferenceCameraError] = useState<string | null>(null);
+
+  // Helper: Get current mode's camera selection state
+  const availableCameras = viewMode === 'training' ? trainingAvailableCameras : inferenceAvailableCameras;
+  const setAvailableCameras = (val: MediaDeviceInfo[]) => {
+    if (viewMode === 'training') setTrainingAvailableCameras(val);
+    else setInferenceAvailableCameras(val);
+  };
+  const selectedCameraId = viewMode === 'training' ? trainingSelectedCameraId : inferenceSelectedCameraId;
+  const setSelectedCameraId = (val: string) => {
+    if (viewMode === 'training') setTrainingSelectedCameraId(val);
+    else setInferenceSelectedCameraId(val);
+  };
+  const showCameraSelection = viewMode === 'training' ? trainingShowCameraSelection : inferenceShowCameraSelection;
+  const setShowCameraSelection = (val: boolean) => {
+    if (viewMode === 'training') setTrainingShowCameraSelection(val);
+    else setInferenceShowCameraSelection(val);
+  };
+  const isLoadingCameras = viewMode === 'training' ? trainingIsLoadingCameras : inferenceIsLoadingCameras;
+  const setIsLoadingCameras = (val: boolean) => {
+    if (viewMode === 'training') setTrainingIsLoadingCameras(val);
+    else setInferenceIsLoadingCameras(val);
+  };
+  const currentCameraStream = viewMode === 'training' ? trainingCurrentCameraStream : inferenceCurrentCameraStream;
+  const setCurrentCameraStream = (val: MediaStream | null) => {
+    if (viewMode === 'training') setTrainingCurrentCameraStream(val);
+    else setInferenceCurrentCameraStream(val);
+  };
+  const cameraError = viewMode === 'training' ? trainingCameraError : inferenceCameraError;
+  const setCameraError = (val: string | null) => {
+    if (viewMode === 'training') setTrainingCameraError(val);
+    else setInferenceCameraError(val);
+  };
 
   // Mobile responsive states
   const [isMobile, setIsMobile] = useState(false);
@@ -295,14 +408,66 @@ export default function TrainingContent() {
   const [currentFrame, setCurrentFrame] = useState(0);
   const [totalFrames, setTotalFrames] = useState(0);
 
-  // Remote camera states
-  const [remoteCameraSession, setRemoteCameraSession] = useState<RemoteCameraSession | null>(null);
-  const [showQRCode, setShowQRCode] = useState(false);
-  const [remoteCameraActive, setRemoteCameraActive] = useState(false);
-  const [remoteCameraFrame, setRemoteCameraFrame] = useState<string | null>(null);
-  const [remoteCameraStatus, setRemoteCameraStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
-  const [remoteDownloadUrl, setRemoteDownloadUrl] = useState<string>('');
-  const [remoteStoragePath, setRemoteStoragePath] = useState<string>('');
+  // Remote camera states - TRAINING
+  const [trainingRemoteCameraSession, setTrainingRemoteCameraSession] = useState<RemoteCameraSession | null>(null);
+  const [trainingShowQRCode, setTrainingShowQRCode] = useState(false);
+  const [trainingRemoteCameraActive, setTrainingRemoteCameraActive] = useState(false);
+  const [trainingRemoteCameraFrame, setTrainingRemoteCameraFrame] = useState<string | null>(null);
+  const [trainingRemoteCameraStatus, setTrainingRemoteCameraStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
+  const [trainingRemoteDownloadUrl, setTrainingRemoteDownloadUrl] = useState<string>('');
+  const [trainingRemoteStoragePath, setTrainingRemoteStoragePath] = useState<string>('');
+
+  // Remote camera states - INFERENCE
+  const [inferenceRemoteCameraSession, setInferenceRemoteCameraSession] = useState<RemoteCameraSession | null>(null);
+  const [inferenceShowQRCode, setInferenceShowQRCode] = useState(false);
+  const [inferenceRemoteCameraActive, setInferenceRemoteCameraActive] = useState(false);
+  const [inferenceRemoteCameraFrame, setInferenceRemoteCameraFrame] = useState<string | null>(null);
+  const [inferenceRemoteCameraStatus, setInferenceRemoteCameraStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
+  const [inferenceRemoteDownloadUrl, setInferenceRemoteDownloadUrl] = useState<string>('');
+  const [inferenceRemoteStoragePath, setInferenceRemoteStoragePath] = useState<string>('');
+
+  // Helper: Get current mode's remote camera state
+  const remoteCameraSession = viewMode === 'training' ? trainingRemoteCameraSession : inferenceRemoteCameraSession;
+  const setRemoteCameraSession = (val: RemoteCameraSession | null) => {
+    if (viewMode === 'training') setTrainingRemoteCameraSession(val);
+    else setInferenceRemoteCameraSession(val);
+  };
+  const showQRCode = viewMode === 'training' ? trainingShowQRCode : inferenceShowQRCode;
+  const setShowQRCode = (val: boolean) => {
+    if (viewMode === 'training') setTrainingShowQRCode(val);
+    else setInferenceShowQRCode(val);
+  };
+  const remoteCameraActive = viewMode === 'training' ? trainingRemoteCameraActive : inferenceRemoteCameraActive;
+  const setRemoteCameraActive = (val: boolean) => {
+    if (viewMode === 'training') setTrainingRemoteCameraActive(val);
+    else setInferenceRemoteCameraActive(val);
+  };
+  const remoteCameraFrame = viewMode === 'training' ? trainingRemoteCameraFrame : inferenceRemoteCameraFrame;
+  const setRemoteCameraFrame = (val: string | null) => {
+    if (viewMode === 'training') setTrainingRemoteCameraFrame(val);
+    else setInferenceRemoteCameraFrame(val);
+  };
+  const remoteCameraStatus = viewMode === 'training' ? trainingRemoteCameraStatus : inferenceRemoteCameraStatus;
+  const setRemoteCameraStatus = (val: 'disconnected' | 'connecting' | 'connected') => {
+    if (viewMode === 'training') setTrainingRemoteCameraStatus(val);
+    else setInferenceRemoteCameraStatus(val);
+  };
+  const remoteDownloadUrl = viewMode === 'training' ? trainingRemoteDownloadUrl : inferenceRemoteDownloadUrl;
+  const setRemoteDownloadUrl = (val: string) => {
+    if (viewMode === 'training') setTrainingRemoteDownloadUrl(val);
+    else setInferenceRemoteDownloadUrl(val);
+  };
+  const remoteStoragePath = viewMode === 'training' ? trainingRemoteStoragePath : inferenceRemoteStoragePath;
+  const setRemoteStoragePath = (val: string) => {
+    if (viewMode === 'training') setTrainingRemoteStoragePath(val);
+    else setInferenceRemoteStoragePath(val);
+  };
+  const selectedROI = viewMode === 'training' ? trainingSelectedROI : inferenceSelectedROI;
+  const setSelectedROI = (val: string | null) => {
+    if (viewMode === 'training') setTrainingSelectedROI(val);
+    else setInferenceSelectedROI(val);
+  };
+  const activeRois = viewMode === 'training' ? rois : inferenceRois;
 
   useEffect(() => {
     remoteSessionRef.current = remoteCameraSession;
@@ -697,16 +862,17 @@ export default function TrainingContent() {
         }
 
         if (data.type === 'session_state' || data.type === 'broadcaster_connected') {
-          setRemoteCameraSession((prev) => ({
+          const newSession: RemoteCameraSession = {
             sessionId,
             connected: Boolean(data.broadcaster_connected),
-            lastFrameTime: prev?.lastFrameTime || Date.now(),
-            frameCount: typeof data.frame_count === 'number' ? data.frame_count : prev?.frameCount || 0,
-            deviceInfo: typeof data.device_info === 'string' ? data.device_info : prev?.deviceInfo,
-            downloadUrl: typeof data.download_url === 'string' ? data.download_url : prev?.downloadUrl,
-            storedVideoPath: typeof data.stored_video_path === 'string' ? data.stored_video_path : prev?.storedVideoPath,
-            storageOwner: typeof data.storage_owner === 'string' ? data.storage_owner : prev?.storageOwner,
-          }));
+            lastFrameTime: remoteCameraSession?.lastFrameTime || Date.now(),
+            frameCount: typeof data.frame_count === 'number' ? data.frame_count : remoteCameraSession?.frameCount || 0,
+            deviceInfo: typeof data.device_info === 'string' ? data.device_info : remoteCameraSession?.deviceInfo,
+            downloadUrl: typeof data.download_url === 'string' ? data.download_url : remoteCameraSession?.downloadUrl,
+            storedVideoPath: typeof data.stored_video_path === 'string' ? data.stored_video_path : remoteCameraSession?.storedVideoPath,
+            storageOwner: typeof data.storage_owner === 'string' ? data.storage_owner : remoteCameraSession?.storageOwner,
+          };
+          setRemoteCameraSession(newSession);
 
           if (data.type === 'session_state' && data.frame) {
             const frame = typeof data.frame === 'string' ? data.frame : '';
@@ -734,23 +900,26 @@ export default function TrainingContent() {
           setVideoDimensions({ width: frameWidth, height: frameHeight });
           renderRemoteFrameToVideo(frame, frameWidth, frameHeight);
 
-          setRemoteCameraSession((prev) => ({
+          const newSession: RemoteCameraSession = {
             sessionId,
             connected: true,
             lastFrameTime: Number.isFinite(frameTimestamp) ? frameTimestamp : Date.now(),
-            frameCount: typeof data.frame_count === 'number' ? data.frame_count : (prev?.frameCount || 0) + 1,
-            deviceInfo: typeof data.device_info === 'string' ? data.device_info : prev?.deviceInfo,
-            downloadUrl: typeof data.download_url === 'string' ? data.download_url : prev?.downloadUrl,
-            storedVideoPath: typeof data.stored_video_path === 'string' ? data.stored_video_path : prev?.storedVideoPath,
-            storageOwner: typeof data.storage_owner === 'string' ? data.storage_owner : prev?.storageOwner,
-          }));
+            frameCount: typeof data.frame_count === 'number' ? data.frame_count : (remoteCameraSession?.frameCount || 0) + 1,
+            deviceInfo: typeof data.device_info === 'string' ? data.device_info : remoteCameraSession?.deviceInfo,
+            downloadUrl: typeof data.download_url === 'string' ? data.download_url : remoteCameraSession?.downloadUrl,
+            storedVideoPath: typeof data.stored_video_path === 'string' ? data.stored_video_path : remoteCameraSession?.storedVideoPath,
+            storageOwner: typeof data.storage_owner === 'string' ? data.storage_owner : remoteCameraSession?.storageOwner,
+          };
+          setRemoteCameraSession(newSession);
           return;
         }
 
         if (data.type === 'session_stopped') {
           setRemoteCameraStatus('disconnected');
           setRemoteCameraActive(false);
-          setRemoteCameraSession((prev) => prev ? { ...prev, connected: false } : prev);
+          if (remoteCameraSession) {
+            setRemoteCameraSession({ ...remoteCameraSession, connected: false });
+          }
           addTerminalLog('📱 Remote camera stopped. Recording is ready to download.');
         }
       } catch (parseError) {
@@ -1044,26 +1213,42 @@ export default function TrainingContent() {
   };
 
   const startRemoteCameraSession = () => {
-    if (remoteCameraSession) {
+    // Get mode-specific session
+    const session = viewMode === 'training' ? trainingRemoteCameraSession : inferenceRemoteCameraSession;
+
+    if (session) {
       stopRemoteCamera();
     }
 
     const sessionId = generateSessionId();
-    const session: RemoteCameraSession = {
+    const newSession: RemoteCameraSession = {
       sessionId,
       connected: false,
       lastFrameTime: Date.now(),
       frameCount: 0,
     };
 
-    setRemoteCameraSession(session);
-    setShowQRCode(true);
-    setInputSource('remote');
-    setRemoteCameraActive(true);
-    setRemoteCameraStatus('connecting');
-    setRemoteCameraFrame(null);
-    setRemoteDownloadUrl('');
-    setRemoteStoragePath('');
+    // Update mode-specific session
+    if (viewMode === 'training') {
+      setTrainingRemoteCameraSession(newSession);
+      setTrainingShowQRCode(true);
+      setTrainingInputSource('remote');
+      setTrainingRemoteCameraActive(true);
+      setTrainingRemoteCameraStatus('connecting');
+      setTrainingRemoteCameraFrame(null);
+      setTrainingRemoteDownloadUrl('');
+      setTrainingRemoteStoragePath('');
+    } else {
+      setInferenceRemoteCameraSession(newSession);
+      setInferenceShowQRCode(true);
+      setInferenceInputSource('remote');
+      setInferenceRemoteCameraActive(true);
+      setInferenceRemoteCameraStatus('connecting');
+      setInferenceRemoteCameraFrame(null);
+      setInferenceRemoteDownloadUrl('');
+      setInferenceRemoteStoragePath('');
+    }
+
     resetRemoteVideoSurface();
 
     // Generate the URL for mobile phone
@@ -1450,7 +1635,9 @@ export default function TrainingContent() {
     }
   };
   const stopRemoteCamera = () => {
-    const sessionIdToStop = remoteCameraSession?.sessionId;
+    // Get mode-specific session
+    const session = viewMode === 'training' ? trainingRemoteCameraSession : inferenceRemoteCameraSession;
+    const sessionIdToStop = session?.sessionId;
     remoteStopRequestedRef.current = true;
 
     // STOP INFERENCE FIRST before stopping camera
@@ -1485,12 +1672,24 @@ export default function TrainingContent() {
     }
 
     resetRemoteVideoSurface();
-    setRemoteCameraActive(false);
-    setRemoteCameraStatus('disconnected');
-    setRemoteCameraSession(prev => prev ? { ...prev, connected: false } : null);
-    setShowQRCode(false);
-    if (inputSource === 'remote') {
-      setInputSource('upload');
+
+    // Update mode-specific remote camera state
+    if (viewMode === 'training') {
+      setTrainingRemoteCameraActive(false);
+      setTrainingRemoteCameraStatus('disconnected');
+      setTrainingRemoteCameraSession(prev => prev ? { ...prev, connected: false } : null);
+      setTrainingShowQRCode(false);
+      if (trainingInputSource === 'remote') {
+        setTrainingInputSource('upload');
+      }
+    } else {
+      setInferenceRemoteCameraActive(false);
+      setInferenceRemoteCameraStatus('disconnected');
+      setInferenceRemoteCameraSession(prev => prev ? { ...prev, connected: false } : null);
+      setInferenceShowQRCode(false);
+      if (inferenceInputSource === 'remote') {
+        setInferenceInputSource('upload');
+      }
     }
     addTerminalLog('📱 Remote camera stopped');
   };
@@ -1764,7 +1963,10 @@ export default function TrainingContent() {
     try {
       const devices = await navigator.mediaDevices.enumerateDevices();
       const videoDevices = devices.filter(device => device.kind === 'videoinput');
-      setAvailableCameras(videoDevices);
+
+      // Set cameras for both modes on mount
+      setTrainingAvailableCameras(videoDevices);
+      setInferenceAvailableCameras(videoDevices);
 
       if (videoDevices.length > 0) {
         const defaultCamera = videoDevices.find(device =>
@@ -1772,7 +1974,9 @@ export default function TrainingContent() {
           device.label.toLowerCase().includes('built-in') ||
           device.deviceId === 'default'
         );
-        setSelectedCameraId(defaultCamera?.deviceId || videoDevices[0].deviceId);
+        const cameraId = defaultCamera?.deviceId || videoDevices[0].deviceId;
+        setTrainingSelectedCameraId(cameraId);
+        setInferenceSelectedCameraId(cameraId);
       }
 
       addTerminalLog(`Found ${videoDevices.length} camera(s) on system`);
@@ -1783,7 +1987,13 @@ export default function TrainingContent() {
 
   const listAvailableCameras = async () => {
     try {
-      setIsLoadingCameras(true);
+      // Set loading state for current mode
+      if (viewMode === 'training') {
+        setTrainingIsLoadingCameras(true);
+      } else {
+        setInferenceIsLoadingCameras(true);
+      }
+
       try {
         const tempStream = await navigator.mediaDevices.getUserMedia({ video: true });
         tempStream.getTracks().forEach(track => track.stop());
@@ -1793,7 +2003,13 @@ export default function TrainingContent() {
 
       const devices = await navigator.mediaDevices.enumerateDevices();
       const videoDevices = devices.filter(device => device.kind === 'videoinput');
-      setAvailableCameras(videoDevices);
+
+      // Update mode-specific camera state
+      if (viewMode === 'training') {
+        setTrainingAvailableCameras(videoDevices);
+      } else {
+        setInferenceAvailableCameras(videoDevices);
+      }
 
       if (videoDevices.length > 0) {
         const defaultCamera = videoDevices.find(device =>
@@ -1801,16 +2017,29 @@ export default function TrainingContent() {
           device.label.toLowerCase().includes('built-in') ||
           device.deviceId === 'default'
         );
-        setSelectedCameraId(defaultCamera?.deviceId || videoDevices[0].deviceId);
+        const cameraId = defaultCamera?.deviceId || videoDevices[0].deviceId;
+        if (viewMode === 'training') {
+          setTrainingSelectedCameraId(cameraId);
+        } else {
+          setInferenceSelectedCameraId(cameraId);
+        }
       }
 
       addTerminalLog(`Found ${videoDevices.length} camera(s)`);
-      setIsLoadingCameras(false);
+      if (viewMode === 'training') {
+        setTrainingIsLoadingCameras(false);
+      } else {
+        setInferenceIsLoadingCameras(false);
+      }
       return videoDevices;
     } catch (error) {
       console.error('Error listing cameras:', error);
       addTerminalLog(`❌ Error accessing camera devices: ${error}`);
-      setIsLoadingCameras(false);
+      if (viewMode === 'training') {
+        setTrainingIsLoadingCameras(false);
+      } else {
+        setInferenceIsLoadingCameras(false);
+      }
       return [];
     }
   };
@@ -1841,10 +2070,18 @@ export default function TrainingContent() {
         stopCamera();
       }
 
-      setCurrentCameraStream(stream);
-      setCameraError(null);
-      setInputSource('camera');
-      setShowCameraSelection(false);
+      // Update mode-specific camera state
+      if (viewMode === 'training') {
+        setTrainingCurrentCameraStream(stream);
+        setTrainingCameraError(null);
+        setTrainingInputSource('camera');
+        setTrainingShowCameraSelection(false);
+      } else {
+        setInferenceCurrentCameraStream(stream);
+        setInferenceCameraError(null);
+        setInferenceInputSource('camera');
+        setInferenceShowCameraSelection(false);
+      }
       setInferenceViewerMode('processed');
 
       if (videoRef.current) {
@@ -1890,7 +2127,11 @@ export default function TrainingContent() {
             ? 'Camera is already in use by another app.'
             : `Error accessing camera: ${error?.message || 'unknown error'}`;
 
-      setCameraError(msg);
+      if (viewMode === 'training') {
+        setTrainingCameraError(msg);
+      } else {
+        setInferenceCameraError(msg);
+      }
       addTerminalLog(`❌ ${msg}`);
 
       // 4. Fallback: Try without any constraints at all
@@ -1901,9 +2142,15 @@ export default function TrainingContent() {
           audio: false
         });
 
-        setCurrentCameraStream(fallbackStream);
-        setInputSource('camera');
-        setShowCameraSelection(false);
+        if (viewMode === 'training') {
+          setTrainingCurrentCameraStream(fallbackStream);
+          setTrainingInputSource('camera');
+          setTrainingShowCameraSelection(false);
+        } else {
+          setInferenceCurrentCameraStream(fallbackStream);
+          setInferenceInputSource('camera');
+          setInferenceShowCameraSelection(false);
+        }
         setInferenceViewerMode('processed');
         if (videoRef.current) {
           videoRef.current.srcObject = fallbackStream;
@@ -1917,7 +2164,11 @@ export default function TrainingContent() {
         }
       } catch (fallbackError: any) {
         const msg = `Fallback also failed: ${fallbackError?.message || 'unknown error'}`;
-        setCameraError(msg);
+        if (viewMode === 'training') {
+          setTrainingCameraError(msg);
+        } else {
+          setInferenceCameraError(msg);
+        }
         addTerminalLog(`❌ ${msg}`);
         showToast(`Could not access any camera. ${fallbackError?.message || fallbackError}`, 'error');
       }
@@ -1930,22 +2181,37 @@ export default function TrainingContent() {
       inference.toggleRealtimeInference();
     }
 
-    if (currentCameraStream) {
-      currentCameraStream.getTracks().forEach(track => {
+    // Stop mode-specific camera stream
+    const stream = viewMode === 'training' ? trainingCurrentCameraStream : inferenceCurrentCameraStream;
+    if (stream) {
+      stream.getTracks().forEach(track => {
         track.stop();
       });
-      setCurrentCameraStream(null);
+      if (viewMode === 'training') {
+        setTrainingCurrentCameraStream(null);
+      } else {
+        setInferenceCurrentCameraStream(null);
+      }
     }
 
     if (videoRef.current && videoRef.current.srcObject) {
       videoRef.current.srcObject = null;
     }
 
-    if (inputSource === 'camera') {
-      setInputSource('upload');
+    const currentInputSource = viewMode === 'training' ? trainingInputSource : inferenceInputSource;
+    if (currentInputSource === 'camera') {
+      if (viewMode === 'training') {
+        setTrainingInputSource('upload');
+      } else {
+        setInferenceInputSource('upload');
+      }
     }
 
-    setCameraError(null);
+    if (viewMode === 'training') {
+      setTrainingCameraError(null);
+    } else {
+      setInferenceCameraError(null);
+    }
     addTerminalLog('✓ Camera stopped');
   };
 
@@ -1986,52 +2252,64 @@ export default function TrainingContent() {
   };
 
   const handleInputSourceChange = (newSource: 'upload' | 'camera' | 'oak' | 'remote') => {
-    if (inputSource === 'camera' && newSource !== 'camera') {
+    // Get the current input source based on mode
+    const currentInputSource = viewMode === 'training' ? trainingInputSource : inferenceInputSource;
+    const currentIsOakStreaming = viewMode === 'training' ? trainingIsOakStreaming : inferenceIsOakStreaming;
+
+    // Stop previous input sources based on mode
+    if (currentInputSource === 'camera' && newSource !== 'camera') {
       stopCamera();
     }
 
-    if (inputSource === 'oak' && newSource !== 'oak') {
-      if (isOakStreaming) {
+    if (currentInputSource === 'oak' && newSource !== 'oak') {
+      if (currentIsOakStreaming) {
         stopOakCamera();
       }
     }
 
-    if (inputSource === 'remote' && newSource !== 'remote') {
+    if (currentInputSource === 'remote' && newSource !== 'remote') {
       stopRemoteCamera();
     }
 
-    setInputSource(newSource);
-    setShowCameraSelection(false);
+    // Update input source based on mode
+    if (viewMode === 'training') {
+      setTrainingInputSource(newSource);
+      setTrainingShowCameraSelection(false);
+    } else {
+      setInferenceInputSource(newSource);
+      setInferenceShowCameraSelection(false);
+    }
   };
 
-  const roisForInference = viewMode === 'inference' ? inferenceRois : rois;
+  const roisForInference = inferenceRois;
   const inference = useInference({
     backendUrl: NEXT_PUBLIC_BACKEND_URL,
-    inputSource,
-    isOakStreaming,
-    remoteCameraActive,
-    remoteCameraFrame,
+    inputSource: inferenceInputSource,
+    isOakStreaming: inferenceIsOakStreaming,
+    remoteCameraActive: inferenceRemoteCameraActive,
+    remoteCameraFrame: inferenceRemoteCameraFrame,
     rois: roisForInference,
-    selectedROI,
+    selectedROI: inferenceSelectedROI,
     videoDimensions,
     videoRef,
     oakStreamRef,
-    getVideoFile: () => videoFile,
-    onInputSourceChange: handleInputSourceChange,
+    getVideoFile: () => inferenceVideoFile,
+    onInputSourceChange: setInferenceInputSource,
     onVideoLoaded: (file, url) => {
-      setVideoFile(file);
-      setVideoUrl(url);
+      setInferenceVideoFile(file);
+      setInferenceVideoUrl(url);
     },
     addTerminalLog,
   });
+  const { verifyCameraBeforeAction: verifyCameraAction } = useCameraShutterDetection();
   const isInferenceOriginalViewActive =
     viewMode === 'inference' && inferenceViewerMode === 'original';
   const isCanvasInteractive = viewMode === 'training' || isInferenceOriginalViewActive;
   const shouldShowCanvasOverlay = isCanvasInteractive;
   const canvasBackgroundAlpha = (viewMode === 'inference' && inferenceViewerMode === 'processed') ? 0.85 : 1.0;
   const activeViewerROI =
-    selectedROI
-      ? rois.find((roi) => roi.id === selectedROI) ?? null
+    inferenceSelectedROI
+      ? inferenceRois.find((roi) => roi.id === inferenceSelectedROI) ?? null
       : null;
 
   // REMOVED AUTO-START: User must manually click "Start Inference" button
@@ -2051,6 +2329,8 @@ export default function TrainingContent() {
     setActivePanel(null);
     setMobileActivePanelMenu(null);
     setShowMobileMenu(false);
+    setCurrentROI(null);
+    setIsDrawing(false);
     closeFullscreenPopup();
     if (mode === 'training') {
       void inference.stopInference();
@@ -2933,7 +3213,7 @@ export default function TrainingContent() {
 
     // Draw current ROI being drawn
     if (currentROI && isDrawing) {
-      const color = roiColors[rois.length % roiColors.length];
+      const color = roiColors[activeRois.length % roiColors.length];
 
       if (currentROI.type === 'rectangle' && currentROI.points.length === 2) {
         const [p1, p2] = currentROI.points;
@@ -3278,8 +3558,8 @@ export default function TrainingContent() {
           id: `roi_${Date.now()}`,
           type: 'polygon',
           points: [videoCoords],
-          label: `ROI ${rois.length + 1}`,
-          color: roiColors[rois.length % roiColors.length],
+          label: `ROI ${activeRois.length + 1}`,
+          color: roiColors[activeRois.length % roiColors.length],
           training: []//here I have to pass the selected training 
 
         };
@@ -3303,7 +3583,7 @@ export default function TrainingContent() {
       }
     } else if (drawingMode === 'select') {
       let clickedROI = null;
-      for (const roi of rois) {
+      for (const roi of activeRois) {
         if (isPointInROI(videoCoords, roi)) {
           clickedROI = roi;
           break;
@@ -3325,8 +3605,8 @@ export default function TrainingContent() {
             id: `roi_${Date.now()}`,
             type: 'rectangle',
             points: [videoCoords, videoCoords],
-            label: `ROI ${rois.length + 1}`,
-            color: roiColors[rois.length % roiColors.length],
+            label: `ROI ${activeRois.length + 1}`,
+            color: roiColors[activeRois.length % roiColors.length],
             training: []
           };
           setCurrentROI(newROI);
@@ -3351,8 +3631,8 @@ export default function TrainingContent() {
             id: `roi_${Date.now()}`,
             type: 'polygon',
             points: [videoCoords],
-            label: `ROI ${rois.length + 1}`,
-            color: roiColors[rois.length % roiColors.length],
+            label: `ROI ${activeRois.length + 1}`,
+            color: roiColors[activeRois.length % roiColors.length],
             training: []
           };
           setCurrentROI(newROI);
@@ -3373,7 +3653,7 @@ export default function TrainingContent() {
         }
       } else if (drawingMode === 'select') {
         let clickedROI = null;
-        for (const roi of rois) {
+        for (const roi of activeRois) {
           if (isPointInROI(videoCoords, roi)) {
             clickedROI = roi;
             break;
@@ -3409,20 +3689,22 @@ export default function TrainingContent() {
     const coords = getVideoCoords(event.clientX, event.clientY);
 
     // Hover detection
-    let foundHover: string | null = null;
-    for (let i = rois.length - 1; i >= 0; i--) {
-      if (isPointInROI(coords, rois[i])) {
-        foundHover = rois[i].id;
-        break;
+    if (viewMode === 'training') {
+      let foundHover: string | null = null;
+      for (let i = rois.length - 1; i >= 0; i--) {
+        if (isPointInROI(coords, rois[i])) {
+          foundHover = rois[i].id;
+          break;
+        }
       }
-    }
-    if (foundHover) {
-      clearTooltipHideTimeout();
-      if (hoveredROI !== foundHover) {
-        setHoveredROI(foundHover);
+      if (foundHover) {
+        clearTooltipHideTimeout();
+        if (hoveredROI !== foundHover) {
+          setHoveredROI(foundHover);
+        }
+      } else if (!tooltipHoveredRef.current && hoveredROI && !tooltipHideTimeoutRef.current) {
+        scheduleTooltipHide();
       }
-    } else if (!tooltipHoveredRef.current && hoveredROI && !tooltipHideTimeoutRef.current) {
-      scheduleTooltipHide();
     }
     if (!isDrawing || !currentROI) return;
 
@@ -3497,25 +3779,36 @@ export default function TrainingContent() {
   };
 
   const clearAllROIs = () => {
-    setRois([]);
+    if (viewMode === 'training') {
+      setRois([]);
+    } else {
+      setInferenceRois([]);
+    }
     setSelectedROI(null);
-    setHoveredROI(null);
+    if (viewMode === 'training') {
+      setHoveredROI(null);
+    }
     setCurrentROI(null);
     setIsDrawing(false);
-    addTerminalLog('Cleared all ROIs');
+    addTerminalLog(viewMode === 'training' ? 'Cleared all training ROIs' : 'Cleared all inference ROIs');
   };
 
   const deleteROI = (id: string) => {
-    const roiToDelete = rois.find(roi => roi.id === id);
-    setRois(prev => prev.filter(roi => roi.id !== id));
+    const sourceRois = viewMode === 'training' ? rois : inferenceRois;
+    const roiToDelete = sourceRois.find(roi => roi.id === id);
+    if (viewMode === 'training') {
+      setRois(prev => prev.filter(roi => roi.id !== id));
+    } else {
+      setInferenceRois(prev => prev.filter(roi => roi.id !== id));
+    }
     if (selectedROI === id) {
       setSelectedROI(null);
     }
-    if (hoveredROI === id) {
+    if (viewMode === 'training' && hoveredROI === id) {
       setHoveredROI(null);
     }
     if (roiToDelete) {
-      addTerminalLog(`Deleted ROI: ${roiToDelete.label}`);
+      addTerminalLog(`${viewMode === 'training' ? 'Deleted training ROI' : 'Deleted inference ROI'}: ${roiToDelete.label}`);
     }
   };
 
@@ -3959,7 +4252,7 @@ export default function TrainingContent() {
     return ws;
   };
 
-  const toggleRecording = () => {
+  const toggleRecording = async () => {
     if (!isRecording) {
       // Validate input source
       if (inputSource === 'remote' && !isRemoteCameraReady()) {
@@ -3983,6 +4276,15 @@ export default function TrainingContent() {
       if (inputSource === 'remote' && remoteCameraStatus !== 'connected') {
         showToast('Please connect remote camera first', "warning");
         return;
+      }
+
+      // Verify camera is live if using camera input
+      if (inputSource === 'camera') {
+        const isCameraLive = await verifyCameraAction(videoRef.current, 'recording');
+        if (!isCameraLive) {
+          addTerminalLog('❌ Recording blocked: Camera shutter detected or camera feed is static');
+          return;
+        }
       }
 
       setIsRecording(true);
@@ -4181,6 +4483,17 @@ export default function TrainingContent() {
         showToast('Please start camera first', 'warning');
         setShowUpload(false);
         return;
+      }
+
+      // Verify camera is live if using camera input
+      if (inputSource === 'camera') {
+        addTerminalLog(`🔍 Verifying camera hardware stream before training...`);
+        const isCameraLive = await verifyCameraAction(videoRef.current, 'training');
+        if (!isCameraLive) {
+          setShowUpload(false);
+          addTerminalLog('❌ Training blocked: Camera shutter detected or camera feed is static');
+          return;
+        }
       }
 
       if (!recordingDuration || recordingDuration <= 0) {
@@ -4566,9 +4879,17 @@ export default function TrainingContent() {
       const response = await fetch('https://localhost:5000/api/camera/devices');
       if (response.ok) {
         const data = await response.json();
-        setOakDevices(data.devices || []);
-        if (data.devices && data.devices.length > 0) {
-          setSelectedDevice(data.devices[0].mxid);
+        // Update mode-specific OAK devices
+        if (viewMode === 'training') {
+          setTrainingOakDevices(data.devices || []);
+          if (data.devices && data.devices.length > 0) {
+            setTrainingSelectedDevice(data.devices[0].mxid);
+          }
+        } else {
+          setInferenceOakDevices(data.devices || []);
+          if (data.devices && data.devices.length > 0) {
+            setInferenceSelectedDevice(data.devices[0].mxid);
+          }
         }
       }
     } catch (error) {
@@ -4585,15 +4906,26 @@ export default function TrainingContent() {
 
       if (!response.ok) throw new Error('Failed to start camera');
 
-      setIsOakStreaming(true);
-      setOakCameraState('streaming');
+      // Update mode-specific OAK camera state
+      if (viewMode === 'training') {
+        setTrainingIsOakStreaming(true);
+        setTrainingOakCameraState('streaming');
+        setTrainingStreamUrl('https://localhost:5000/api/camera/stream');
+      } else {
+        setInferenceIsOakStreaming(true);
+        setInferenceOakCameraState('streaming');
+        setInferenceStreamUrl('https://localhost:5000/api/camera/stream');
+      }
       handleInputSourceChange('oak');
-      setStreamUrl('https://localhost:5000/api/camera/stream');
       addTerminalLog('✓ OAK Camera started streaming');
 
     } catch (error) {
       console.error('Error starting OAK camera:', error);
-      setOakCameraState('error');
+      if (viewMode === 'training') {
+        setTrainingOakCameraState('error');
+      } else {
+        setInferenceOakCameraState('error');
+      }
       addTerminalLog(`❌ Error starting OAK camera: ${error}`);
     }
   };
@@ -4602,9 +4934,16 @@ export default function TrainingContent() {
     try {
       await fetch('https://localhost:5000/api/camera/stop', { method: 'POST' });
 
-      setIsOakStreaming(false);
-      setOakCameraState('idle');
-      setStreamUrl('');
+      // Update mode-specific OAK camera state
+      if (viewMode === 'training') {
+        setTrainingIsOakStreaming(false);
+        setTrainingOakCameraState('idle');
+        setTrainingStreamUrl('');
+      } else {
+        setInferenceIsOakStreaming(false);
+        setInferenceOakCameraState('idle');
+        setInferenceStreamUrl('');
+      }
       addTerminalLog('✓ OAK Camera stopped');
 
     } catch (error) {
@@ -5098,7 +5437,7 @@ export default function TrainingContent() {
                   <button
                     type="button"
                     onClick={() => setMobileActivePanelMenu('sources')}
-                    className={`${buttonSecondary} !h-12 !justify-start w-full px-3 text-[10px]`}
+                    className={`${buttonSecondary} h-12! justify-start! w-full px-3 text-[10px]`}
                   >
                     <Upload className="h-4 w-4" />
                     Upload
@@ -5106,7 +5445,7 @@ export default function TrainingContent() {
                   <button
                     type="button"
                     onClick={() => setMobileActivePanelMenu('sources')}
-                    className={`${buttonSecondary} !h-12 !justify-start w-full px-3 text-[10px]`}
+                    className={`${buttonSecondary} h-12! justify-start! w-full px-3 text-[10px]`}
                   >
                     <Camera className="h-4 w-4" />
                     Camera
@@ -5114,7 +5453,7 @@ export default function TrainingContent() {
                   <button
                     type="button"
                     onClick={() => setMobileActivePanelMenu('roi')}
-                    className={`${buttonSecondary} !h-12 !justify-start w-full px-3 text-[10px]`}
+                    className={`${buttonSecondary} h-12! justify-start! w-full px-3 text-[10px]`}
                   >
                     <Target className="h-4 w-4" />
                     ROIs
@@ -5122,7 +5461,7 @@ export default function TrainingContent() {
                   <button
                     type="button"
                     onClick={() => setMobileActivePanelMenu('training-model')}
-                    className={`${buttonSecondary} !h-12 !justify-start w-full px-3 text-[10px]`}
+                    className={`${buttonSecondary} h-12! justify-start! w-full px-3 text-[10px]`}
                   >
                     <Cpu className="h-4 w-4" />
                     Training Model
@@ -5130,7 +5469,7 @@ export default function TrainingContent() {
                   <button
                     type="button"
                     onClick={() => setMobileActivePanelMenu('recording')}
-                    className={`${buttonPrimary} !h-12 !justify-start w-full px-3 text-[10px] col-span-2`}
+                    className={`${buttonPrimary} h-12! justify-start! w-full px-3 text-[10px] col-span-2`}
                   >
                     <Settings2 className="h-4 w-4" />
                     Recording Settings
@@ -5147,7 +5486,7 @@ export default function TrainingContent() {
                   <button
                     type="button"
                     onClick={() => setMobileActivePanelMenu('sources')}
-                    className={`${buttonSecondary} !h-12 !justify-start w-full px-3 text-[10px]`}
+                    className={`${buttonSecondary} h-12! justify-start! w-full px-3 text-[10px]`}
                   >
                     <Camera className="h-4 w-4" />
                     Camera Options
@@ -5155,7 +5494,7 @@ export default function TrainingContent() {
                   <button
                     type="button"
                     onClick={() => setMobileActivePanelMenu('model')}
-                    className={`${buttonSecondary} !h-12 !justify-start w-full px-3 text-[10px]`}
+                    className={`${buttonSecondary} h-12! justify-start! w-full px-3 text-[10px]`}
                   >
                     <Sliders className="h-4 w-4" />
                     Model Selection
@@ -5163,7 +5502,7 @@ export default function TrainingContent() {
                   <button
                     type="button"
                     onClick={() => setMobileActivePanelMenu('inference')}
-                    className={`${buttonPrimary} !h-12 !justify-start w-full px-3 text-[10px] col-span-2`}
+                    className={`${buttonPrimary} h-12! justify-start! w-full px-3 text-[10px] col-span-2`}
                   >
                     <Zap className="h-4 w-4" />
                     Inference Control
@@ -5171,7 +5510,7 @@ export default function TrainingContent() {
                   <button
                     type="button"
                     onClick={() => setMobileActivePanelMenu('terminal')}
-                    className={`${buttonSecondary} !h-12 !justify-start w-full px-3 text-[10px]`}
+                    className={`${buttonSecondary} h-12! justify-start! w-full px-3 text-[10px]`}
                   >
                     <Terminal className="h-4 w-4" />
                     Terminal
@@ -5179,7 +5518,7 @@ export default function TrainingContent() {
                   <button
                     type="button"
                     onClick={() => setMobileActivePanelMenu('instructions')}
-                    className={`${buttonSecondary} !h-12 !justify-start w-full px-3 text-[10px]`}
+                    className={`${buttonSecondary} h-12! justify-start! w-full px-3 text-[10px]`}
                   >
                     <HelpCircle className="h-4 w-4" />
                     Instruction
@@ -5208,7 +5547,7 @@ export default function TrainingContent() {
                     setMobileActivePanelMenu(null);
                     fileInputRef.current?.click();
                   }}
-                  className={`${buttonPrimary} !h-12 w-full text-[9px]`}
+                  className={`${buttonPrimary} h-12! w-full text-[9px]`}
                 >
                   <Upload className="h-3.5 w-3.5" />
                   Upload Video
@@ -5227,7 +5566,7 @@ export default function TrainingContent() {
                     setMobileActivePanelMenu(null);
                   }}
                   disabled={!backendConnected}
-                  className={`${buttonSecondary} !h-12 w-full text-[9px] ${!backendConnected ? 'opacity-60' : ''}`}
+                  className={`${buttonSecondary} h-12! w-full text-[9px] ${!backendConnected ? 'opacity-60' : ''}`}
                 >
                   <Camera className="h-3.5 w-3.5" />
                   Live Camera
@@ -5241,7 +5580,7 @@ export default function TrainingContent() {
                     setMobileActivePanelMenu(null);
                   }}
                   disabled={!backendConnected}
-                  className={`${buttonSecondary} !h-12 w-full text-[9px] ${!backendConnected ? 'opacity-60' : ''}`}
+                  className={`${buttonSecondary} h-12! w-full text-[9px] ${!backendConnected ? 'opacity-60' : ''}`}
                 >
                   <Cpu className="h-3.5 w-3.5" />
                   Neuron Camera
@@ -5255,7 +5594,7 @@ export default function TrainingContent() {
                     setMobileActivePanelMenu(null);
                   }}
                   disabled={!backendConnected}
-                  className={`${buttonSecondary} !h-12 w-full text-[9px] ${!backendConnected ? 'opacity-60' : ''}`}
+                  className={`${buttonSecondary} h-12! w-full text-[9px] ${!backendConnected ? 'opacity-60' : ''}`}
                 >
                   <Smartphone className="h-3.5 w-3.5" />
                   Remote Stream
@@ -5333,7 +5672,7 @@ export default function TrainingContent() {
               <button
                 type="button"
                 onClick={() => setTrainingTypes((prev) => ({ ...prev, anomaly: !prev.anomaly }))}
-                className={`${buttonSecondary} !h-12 !justify-start w-full px-3 text-[10px] ${trainingTypes.anomaly ? 'border-blue-500/40 bg-blue-500/10 text-blue-300' : ''}`}
+                className={`${buttonSecondary} h-12! justify-start! w-full px-3 text-[10px] ${trainingTypes.anomaly ? 'border-blue-500/40 bg-blue-500/10 text-blue-300' : ''}`}
               >
                 <Bug className="h-4 w-4" />
                 Anomaly Detection
@@ -5341,7 +5680,7 @@ export default function TrainingContent() {
               <button
                 type="button"
                 onClick={() => setTrainingTypes((prev) => ({ ...prev, sequential: !prev.sequential }))}
-                className={`${buttonSecondary} !h-12 !justify-start w-full px-3 text-[10px] ${trainingTypes.sequential ? 'border-blue-500/40 bg-blue-500/10 text-blue-300' : ''}`}
+                className={`${buttonSecondary} h-12! justify-start! w-full px-3 text-[10px] ${trainingTypes.sequential ? 'border-blue-500/40 bg-blue-500/10 text-blue-300' : ''}`}
               >
                 <Workflow className="h-4 w-4" />
                 Sequential Analysis
@@ -5349,7 +5688,7 @@ export default function TrainingContent() {
               <button
                 type="button"
                 onClick={() => setTrainingTypes((prev) => ({ ...prev, motion: !prev.motion }))}
-                className={`${buttonSecondary} !h-12 !justify-start w-full px-3 text-[10px] ${trainingTypes.motion ? 'border-blue-500/40 bg-blue-500/10 text-blue-300' : ''}`}
+                className={`${buttonSecondary} h-12! justify-start! w-full px-3 text-[10px] ${trainingTypes.motion ? 'border-blue-500/40 bg-blue-500/10 text-blue-300' : ''}`}
               >
                 <Crosshair className="h-4 w-4" />
                 Motion Tracking
@@ -5360,7 +5699,7 @@ export default function TrainingContent() {
               <button
                 type="button"
                 onClick={() => setMobileActivePanelMenu('roi')}
-                className={`${buttonSecondary} !h-11 w-full text-[9px]`}
+                className={`${buttonSecondary} h-11! w-full text-[9px]`}
               >
                 <Target className="h-3.5 w-3.5" />
                 ROI Tools
@@ -5368,7 +5707,7 @@ export default function TrainingContent() {
               <button
                 type="button"
                 onClick={() => setMobileActivePanelMenu('recording')}
-                className={`${buttonSecondary} !h-11 w-full text-[9px]`}
+                className={`${buttonSecondary} h-11! w-full text-[9px]`}
               >
                 <Settings2 className="h-3.5 w-3.5" />
                 Recording
@@ -5447,7 +5786,7 @@ export default function TrainingContent() {
               <button
                 type="button"
                 onClick={() => setMobileActivePanelMenu('terminal')}
-                className={`${buttonSecondary} !h-12 !justify-start w-full px-3 text-[10px]`}
+                className={`${buttonSecondary} h-12! justify-start! w-full px-3 text-[10px]`}
               >
                 <Terminal className="h-4 w-4" />
                 Terminal
@@ -5455,7 +5794,7 @@ export default function TrainingContent() {
               <button
                 type="button"
                 onClick={() => setMobileActivePanelMenu('instructions')}
-                className={`${buttonSecondary} !h-12 !justify-start w-full px-3 text-[10px]`}
+                className={`${buttonSecondary} h-12! justify-start! w-full px-3 text-[10px]`}
               >
                 <HelpCircle className="h-4 w-4" />
                 Guide
@@ -5538,7 +5877,7 @@ export default function TrainingContent() {
                   (inputSource === 'oak' && !isOakStreaming) ||
                   (inputSource === 'remote' && remoteCameraStatus !== 'connected')
                 }
-                className={`${buttonPrimary} !h-11 w-full text-[9px]`}
+                className={`${buttonPrimary} h-11! w-full text-[9px]`}
               >
                 <Radio className="h-3.5 w-3.5" />
                 {isRecording ? `Stop REC (${remainingTime}s)` : 'Start Recording'}
@@ -5546,13 +5885,16 @@ export default function TrainingContent() {
 
               <button
                 type="button"
-                onClick={() => {
+                onClick={async () => {
                   if (isCapturingTrainingFrames) {
                     stopTraining();
                   } else {
                     const hasSourceReady = videoFile || videoUrl || currentCameraStream || isOakStreaming || remoteCameraActive || backendExtractionMode;
                     if (!hasSourceReady) {
                       showToast("Please select a video or start camera first", "warning");
+                      return;
+                    }
+                    if (inputSource === 'camera' && videoRef.current && !(await verifyCameraAction(videoRef.current, 'training'))) {
                       return;
                     }
                     setShowConfirm(true);
@@ -5596,7 +5938,7 @@ export default function TrainingContent() {
                     setCurrentROI(null);
                     setIsDrawing(false);
                   }}
-                  className={`${buttonSecondary} !h-12 !justify-start w-full px-3 text-[10px] ${drawingMode === 'select' ? 'border-blue-500/40 bg-blue-500/10 text-blue-300' : ''}`}
+                  className={`${buttonSecondary} h-12! justify-start! w-full px-3 text-[10px] ${drawingMode === 'select' ? 'border-blue-500/40 bg-blue-500/10 text-blue-300' : ''}`}
                 >
                   <MousePointer className="h-4 w-4" />
                   Select
@@ -5604,7 +5946,7 @@ export default function TrainingContent() {
                 <button
                   type="button"
                   onClick={() => addNewROI('rectangle')}
-                  className={`${buttonSecondary} !h-12 !justify-start w-full px-3 text-[10px] ${drawingMode === 'rectangle' ? 'border-blue-500/40 bg-blue-500/10 text-blue-300' : ''}`}
+                  className={`${buttonSecondary} h-12! justify-start! w-full px-3 text-[10px] ${drawingMode === 'rectangle' ? 'border-blue-500/40 bg-blue-500/10 text-blue-300' : ''}`}
                 >
                   <Square className="h-4 w-4" />
                   Rectangle
@@ -5612,7 +5954,7 @@ export default function TrainingContent() {
                 <button
                   type="button"
                   onClick={() => addNewROI('polygon')}
-                  className={`${buttonSecondary} !h-12 !justify-start w-full px-3 text-[10px] ${drawingMode === 'polygon' ? 'border-blue-500/40 bg-blue-500/10 text-blue-300' : ''}`}
+                  className={`${buttonSecondary} h-12! justify-start! w-full px-3 text-[10px] ${drawingMode === 'polygon' ? 'border-blue-500/40 bg-blue-500/10 text-blue-300' : ''}`}
                 >
                   <Hexagon className="h-4 w-4" />
                   Polygon
@@ -5620,7 +5962,7 @@ export default function TrainingContent() {
                 <button
                   type="button"
                   onClick={clearAllROIs}
-                  className={`${buttonSecondary} !h-12 !justify-start w-full px-3 text-[10px] text-rose-300`}
+                  className={`${buttonSecondary} h-12! justify-start! w-full px-3 text-[10px] text-rose-300`}
                 >
                   <Trash2 className="h-4 w-4" />
                   Clear All
@@ -5632,9 +5974,9 @@ export default function TrainingContent() {
                   ? `Active ROIs: ${rois.length}`
                   : isInferenceOriginalViewActive
                     ? inference.hasRuntimeInferenceRois
-                      ? `Inference output is limited to ${activeViewerROI?.label || inference.activeInferenceRoiLabel || `${rois.length} ROI${rois.length === 1 ? '' : 's'}`}`
-                      : rois.length > 0
-                        ? `Full-frame inference with ${rois.length} ROI overlay${rois.length === 1 ? '' : 's'}`
+                      ? `Inference output is limited to ${activeViewerROI?.label || inference.activeInferenceRoiLabel || `${inferenceRois.length} ROI${inferenceRois.length === 1 ? '' : 's'}`}`
+                      : inferenceRois.length > 0
+                        ? `Full-frame inference with ${inferenceRois.length} ROI overlay${inferenceRois.length === 1 ? '' : 's'}`
                         : 'Full-frame inference. Draw an ROI on the original feed to add overlays.'
                     : 'Switch to Original view to draw or adjust ROI overlays.'}
               </div>
@@ -5642,7 +5984,7 @@ export default function TrainingContent() {
                 <button
                   type="button"
                   onClick={finishPolygon}
-                  className={`${buttonPrimary} mt-3 !h-11 w-full text-[9px]`}
+                  className={`${buttonPrimary} mt-3 h-11! w-full text-[9px]`}
                 >
                   <Check className="h-3.5 w-3.5" />
                   Finish Polygon
@@ -5685,7 +6027,7 @@ export default function TrainingContent() {
                   onClick={() => {
                     void inference.toggleRealtimeInference();
                   }}
-                  className={`${buttonSecondary} !h-12 !justify-start w-full px-3 text-[10px]`}
+                  className={`${buttonSecondary} h-12! justify-start! w-full px-3 text-[10px]`}
                 >
                   <Radio className="h-4 w-4" />
                   {inference.isRealtime ? 'Live On' : 'Realtime'}
@@ -5696,7 +6038,7 @@ export default function TrainingContent() {
                     void inference.processFrameWithRetry();
                   }}
                   disabled={!backendConnected}
-                  className={`${buttonSecondary} !h-12 !justify-start w-full px-3 text-[10px] ${!backendConnected ? 'opacity-60' : ''}`}
+                  className={`${buttonSecondary} h-12! justify-start! w-full px-3 text-[10px] ${!backendConnected ? 'opacity-60' : ''}`}
                 >
                   <Activity className="h-4 w-4" />
                   Process Frame
@@ -5709,7 +6051,7 @@ export default function TrainingContent() {
                     }
                   }}
                   disabled={!backendConnected || !videoFile}
-                  className={`${buttonSecondary} !h-12 !justify-start w-full px-3 text-[10px] ${!backendConnected || !videoFile ? 'opacity-60' : ''}`}
+                  className={`${buttonSecondary} h-12! justify-start! w-full px-3 text-[10px] ${!backendConnected || !videoFile ? 'opacity-60' : ''}`}
                 >
                   <CloudUpload className="h-4 w-4" />
                   Process Video
@@ -5720,7 +6062,7 @@ export default function TrainingContent() {
                     void inference.startInferenceOnUploadedVideo();
                   }}
                   disabled={!backendConnected || !(inference.uploadedVideoInfo || inference.backendVideoProcessing.jobId)}
-                  className={`${buttonPrimary} !h-12 !justify-start w-full px-3 text-[10px] ${!backendConnected || !(inference.uploadedVideoInfo || inference.backendVideoProcessing.jobId) ? 'opacity-60' : ''}`}
+                  className={`${buttonPrimary} h-12! justify-start! w-full px-3 text-[10px] ${!backendConnected || !(inference.uploadedVideoInfo || inference.backendVideoProcessing.jobId) ? 'opacity-60' : ''}`}
                 >
                   <Play className="h-4 w-4" />
                   Start Video
@@ -5792,7 +6134,7 @@ export default function TrainingContent() {
                   <button
                     type="button"
                     onClick={() => mobileBatchFileInputRef.current?.click()}
-                    className={`${buttonSecondary} !h-12 !justify-start w-full px-3 text-[10px]`}
+                    className={`${buttonSecondary} h-12! justify-start! w-full px-3 text-[10px]`}
                   >
                     <Upload className="h-4 w-4" />
                     Choose Files
@@ -5803,7 +6145,7 @@ export default function TrainingContent() {
                       void inference.processBatch();
                     }}
                     disabled={!backendConnected || inference.batchFiles.length === 0 || inference.isBatchProcessing}
-                    className={`${buttonPrimary} !h-12 !justify-start w-full px-3 text-[10px] ${!backendConnected || inference.batchFiles.length === 0 || inference.isBatchProcessing ? 'opacity-60' : ''}`}
+                    className={`${buttonPrimary} h-12! justify-start! w-full px-3 text-[10px] ${!backendConnected || inference.batchFiles.length === 0 || inference.isBatchProcessing ? 'opacity-60' : ''}`}
                   >
                     <Zap className="h-4 w-4" />
                     Run Batch
@@ -5871,12 +6213,7 @@ export default function TrainingContent() {
                                 inference.setSelectedModel(model.id);
                                 setOpen(false);
                               }}
-                              className={`px-3 py-2 text-xs cursor-pointer
-                  whitespace-normal break-words
-                  hover:bg-white/10
-                  ${inference.selectedModel === model.id ? 'bg-blue-500/20' : ''}
-                `}
-                            >
+                              className={`px-3 py-2 text-xs cursor-pointer whitespace-normal break-words hover:bg-white/10 ${inference.selectedModel === model.id ? 'bg-blue-500/20' : ''}`}>
                               {getLabel(model)}
                             </div>
                           ))}
@@ -5933,7 +6270,7 @@ export default function TrainingContent() {
                   void inference.loadModels();
                 }}
                 disabled={inference.modelLoading}
-                className={`${buttonSecondary} !h-12 !justify-start w-full px-3 text-[10px] ${inference.modelLoading ? 'opacity-60' : ''}`}
+                className={`${buttonSecondary} h-12! justify-start! w-full px-3 text-[10px] ${inference.modelLoading ? 'opacity-60' : ''}`}
               >
                 <RefreshCw className={`h-4 w-4 ${inference.modelLoading ? 'animate-spin' : ''}`} />
                 Refresh
@@ -5946,7 +6283,7 @@ export default function TrainingContent() {
                   }
                 }}
                 disabled={!inference.selectedModel || inference.modelLoading}
-                className={`${buttonPrimary} !h-12 !justify-start w-full px-3 text-[10px] ${!inference.selectedModel || inference.modelLoading ? 'opacity-60' : ''}`}
+                className={`${buttonPrimary} h-12! justify-start! w-full px-3 text-[10px] ${!inference.selectedModel || inference.modelLoading ? 'opacity-60' : ''}`}
               >
                 <Brain className="h-4 w-4" />
                 Load Model
@@ -5959,7 +6296,7 @@ export default function TrainingContent() {
                   }
                 }}
                 disabled={!inference.selectedModel || !inference.isModelLoaded}
-                className={`${buttonSecondary} !h-12 !justify-start w-full px-3 text-[10px] ${!inference.selectedModel || !inference.isModelLoaded ? 'opacity-60' : ''}`}
+                className={`${buttonSecondary} h-12! justify-start! w-full px-3 text-[10px] ${!inference.selectedModel || !inference.isModelLoaded ? 'opacity-60' : ''}`}
               >
                 <PowerOff className="h-4 w-4" />
                 Unload
@@ -5967,7 +6304,7 @@ export default function TrainingContent() {
               <button
                 type="button"
                 onClick={() => setMobileActivePanelMenu(null)}
-                className={`${buttonSecondary} !h-12 !justify-start w-full px-3 text-[10px]`}
+                className={`${buttonSecondary} h-12! justify-start! w-full px-3 text-[10px]`}
               >
                 <X className="h-4 w-4" />
                 Close
@@ -6064,7 +6401,7 @@ export default function TrainingContent() {
       <Toaster position="top-right" />
       {/* QR Code Modal */}
       {showQRCode && remoteCameraSession && (
-        <div className="fixed inset-0 bg-black/80 z-[500] flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/80 z-500 flex items-center justify-center p-4">
           <div className={`${panelCard} max-w-sm w-full max-h-[90vh] p-4`}>
 
             <div className="flex items-center justify-between mb-2">
@@ -6161,7 +6498,7 @@ export default function TrainingContent() {
       )}
 
       {/* Main workspace (grid + footer) fills remaining height */}
-      <div className="flex-1 flex flex-col min-h-0 pb-[4.75rem] md:pb-0 w-full max-w-full">
+      <div className="flex-1 flex flex-col min-h-0 pb-19 md:pb-0 w-full max-w-full">
         {/* Workspace Grid */}
         <div className="flex-1 flex flex-col md:flex-row gap-1.5 md:gap-4 p-1.5 md:p-3 min-h-0 overflow-x-hidden overflow-y-auto lg:overflow-hidden w-full max-w-full">
           {/* Left Column - Canvas & Tools (Span 8) */}
@@ -6747,14 +7084,14 @@ export default function TrainingContent() {
                   <div className="absolute inset-0 z-30 pointer-events-none">
                     <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between p-4">
                       <div className="space-y-2 pointer-events-auto">
-                        <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/55 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-200 backdrop-blur-md">
+                        {/* <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/55 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-200 backdrop-blur-md">
                           <Target className="h-3.5 w-3.5 text-blue-300" />
                           {activeViewerROI
                             ? `${activeViewerROI.label}`
                             : rois.length > 0
                               ? `Full Frame (${rois.length} ROI${rois.length === 1 ? '' : 's'})`
                               : 'Full Frame'}
-                        </div>
+                        </div> */}
                         {/* {roiToolsVisible && inferenceViewerMode === 'processed' && (
                           <div className="max-w-sm rounded-xl border border-sky-500/20 bg-sky-500/10 px-3 py-2 text-[11px] text-sky-100 backdrop-blur-md">
                             Choose Rectangle or Polygon to switch to Original and draw the ROI. Inference will run on that cropped area.
@@ -6957,7 +7294,7 @@ export default function TrainingContent() {
                   </div>
                 )}
 
-                {/* Canvas for ROI drawing - always mounted to preserve drawing context */}
+                {/* Canvas for ROI drawing  */}
                 <canvas
                   ref={canvasRef}
                   onClick={isCanvasInteractive ? handleCanvasClick : undefined}
@@ -7199,7 +7536,7 @@ export default function TrainingContent() {
               </div>
 
 
-              {/* Training Playback Controls Bottom Strip */}
+              {/* Training Playback Controls  */}
               {viewMode === 'training' && (
                 <div className="hidden lg:block absolute bottom-[calc(6rem+env(safe-area-inset-bottom))] left-0 w-full z-[120] bg-gradient-to-t from-black via-black/80 to-transparent px-2.5 pt-1.5 pb-1.5 pointer-events-auto transition-all lg:bottom-0 lg:px-4 lg:pt-2 lg:pb-2">
                   <div className="flex flex-col gap-1.5 md:flex-row md:items-center md:justify-between w-full">
@@ -7338,13 +7675,20 @@ export default function TrainingContent() {
                       ) : (
                         <button
                           type="button"
-                          onClick={() => {
-                            const hasSourceReady = videoFile || videoUrl || currentCameraStream || isOakStreaming || remoteCameraActive || backendExtractionMode;
-                            if (!hasSourceReady) {
-                              showToast("Please select a video or start camera first", "warning");
-                              return;
+                          onClick={async () => {
+                            if (isCapturingTrainingFrames) {
+                              stopTraining();
+                            } else {
+                              const hasSourceReady = videoFile || videoUrl || currentCameraStream || isOakStreaming || remoteCameraActive || backendExtractionMode;
+                              if (!hasSourceReady) {
+                                showToast("Please select a video or start camera first", "warning");
+                                return;
+                              }
+                              if (inputSource === 'camera' && videoRef.current && !(await verifyCameraAction(videoRef.current, 'training'))) {
+                                return;
+                              }
+                              setShowConfirm(true);
                             }
-                            setShowConfirm(true);
                           }}
                           disabled={!backendConnected}
                           className={`flex w-full items-center justify-center gap-2 rounded-md border px-2.5 py-1.5 text-[9px] font-bold uppercase tracking-widest transition-all md:w-auto md:px-3 md:py-1.5 md:text-[10px] ${!backendConnected
@@ -7360,6 +7704,7 @@ export default function TrainingContent() {
                   </div>
                 </div>
               )}
+              {/* Inferene Threshold Controls */}
               {viewMode !== 'training' && (
                 <div className="hidden lg:block absolute bottom-[calc(6rem+env(safe-area-inset-bottom))] left-0 w-full z-[120] bg-gradient-to-t from-black via-black/80 to-transparent px-2.5 pt-1.5 pb-1.5 pointer-events-auto transition-all lg:bottom-0 lg:px-4 lg:pt-2 lg:pb-2">
                   <div className="flex flex-col gap-1.5 md:flex-row md:items-center md:justify-end w-full">
@@ -7389,7 +7734,6 @@ export default function TrainingContent() {
                 </div>
               )}
             </div>
-            {/* Playback Controls Bar (Inference) */}
 
             <div className="mt-2 space-y-2 lg:hidden">
               <BackendExtractionCard
@@ -7563,7 +7907,7 @@ export default function TrainingContent() {
 
             {/* Subtle Confirmation Popup */}
             {showConfirm && (
-              <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/55 p-4">
+              <div className="fixed inset-0 z-150 flex items-center justify-center bg-black/55 p-4">
                 <div className="w-full max-w-xs rounded-2xl border border-white/10 bg-zinc-950 p-4 shadow-[0_30px_80px_rgba(0,0,0,0.45)]">
                   <div className="text-[10px] font-bold tracking-widest uppercase text-zinc-500 mb-2">
                     Confirm Session

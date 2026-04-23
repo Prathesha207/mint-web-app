@@ -1,1 +1,8 @@
-# MINT Frontend - Finish Polygon Button Fix\n\n## Plan Progress\n\n### Step 1: Create TODO.md ✅\n### Step 2: Update ROIToolsPalette.tsx interface + condition ✅\n### Step 3: Update page.tsx to pass polygonPointsLength prop ✅\n### Step 4: Test polygon drawing (button shows after 3rd point)\n### Step 5: Verify no regressions (rectangle mode, other tools)\n### Step 6: attempt_completion\n\n**Current: Test the changes**\n\n**Goal**: Finish button appears only after 3+ polygon points\n\nRun `npm run dev` and test polygon tool.\n
+# Task Progress: Fix videoRef not defined error in useCameraShutterDetection.ts
+
+## Steps:
+- [x] 1. Understand the error and file contents (read_file done).
+- [x] 2. Create edit plan and get user confirmation (approved).
+- [x] 3. Edit the hook file to remove invalid videoRef from return object.\n- [x] 4. Verify the fix and complete the task.
+
+
