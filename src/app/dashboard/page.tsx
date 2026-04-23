@@ -1,201 +1,470 @@
-"use client";
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Plus, User, Info, Settings, Heart, List, CheckCircle, Clock } from 'lucide-react';
+// app/dashboard/page.tsx
+'use client';
 
-// Dummy Data
-const TAPES = [
-  { id: 1, title: "INCEPTION", progress: 76, genre: "SCI-FI" },
-  { id: 2, title: "STRANGER THINGS", progress: 42, genre: "HORROR" },
-  { id: 3, title: "BLADE RUNNER 2049", progress: 90, genre: "SCI-FI" },
-  { id: 4, title: "THE MATRIX", progress: 55, genre: "ACTION" },
-  { id: 5, title: "PULP FICTION", progress: 20, genre: "CRIME" },
-  { id: 6, title: "INTERSTELLAR", progress: 80, genre: "SCI-FI" },
-  { id: 7, title: "THE GODFATHER", progress: 100, genre: "DRAMA" },
-];
+import { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Bell, Settings, User, Search, Filter, Download,
+  Calendar, Clock, Eye, EyeOff, AlertTriangle, CheckCircle,
+  X, Plus, Edit2, Trash2, MoreVertical, ChevronRight,
+  Play, Pause, RefreshCw, Maximize2, Minimize2, BarChart3,
+  LineChart, PieChart, Activity, Server, Cpu, HardDrive,
+  Wifi, Shield, Users, Camera, Video, Target, Brain,
+  Zap, Database, Globe, Lock, Cloud, Terminal, Sparkles,
+  Menu, LogOut, HelpCircle, ChevronDown, ChevronUp,
+  TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight
+} from 'lucide-react';
 
-export default function CineStreamApp() {
+export default function DashboardPage() {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview');
+  const [notifications, setNotifications] = useState([
+    { id: 1, type: 'alert', message: 'Anomaly detected in Camera #3', time: '2 min ago', read: false },
+    { id: 2, type: 'success', message: 'Model training completed', time: '1 hour ago', read: false },
+    { id: 3, type: 'info', message: 'New camera connected', time: '3 hours ago', read: true },
+  ]);
+  const [darkMode, setDarkMode] = useState(true);
+  const [fullscreen, setFullscreen] = useState(false);
+  const [activeCamera, setActiveCamera] = useState(0);
+
+  // Sample data
+  const cameras = [
+    { id: 1, name: 'Front Entrance', status: 'active', fps: 30, lastActive: 'Just now' },
+    { id: 2, name: 'Warehouse A', status: 'active', fps: 25, lastActive: '2 min ago' },
+    { id: 3, name: 'Loading Dock', status: 'warning', fps: 18, lastActive: '5 min ago' },
+    { id: 4, name: 'Parking Lot', status: 'inactive', fps: 0, lastActive: '1 hour ago' },
+  ];
+
+  const models = [
+    { id: 1, name: 'Anomaly Detection V2', accuracy: 98.7, status: 'deployed', lastTrained: 'Today' },
+    { id: 2, name: 'Person Detector', accuracy: 96.2, status: 'training', lastTrained: '2 hours ago' },
+    { id: 3, name: 'Vehicle Classifier', accuracy: 94.5, status: 'ready', lastTrained: 'Yesterday' },
+  ];
+
+  const stats = [
+    { label: 'Total Cameras', value: '12', change: '+2', trend: 'up', icon: Camera },
+    { label: 'Active Models', value: '8', change: '+1', trend: 'up', icon: Brain },
+    { label: 'Alerts Today', value: '24', change: '-8', trend: 'down', icon: AlertTriangle },
+    { label: 'System Uptime', value: '99.9%', change: '+0.2%', trend: 'up', icon: Activity },
+  ];
+
+  const activityLog = [
+    { time: '09:30', action: 'Model training started', user: 'System' },
+    { time: '09:15', action: 'Camera #3 disconnected', user: 'Auto-detection' },
+    { time: '08:45', action: 'New ROI defined', user: 'John Doe' },
+    { time: '08:30', action: 'Alert triggered: Unusual activity', user: 'AI Model' },
+  ];
+
+  // Simulate live data updates
+  // useEffect(() => {
+  //   const interval = setInterval(() => {
+  //     // Update camera FPS randomly
+  //     setCameras(prev => prev.map(cam => ({
+  //       ...cam,
+  //       fps: cam.status === 'active' ? Math.floor(Math.random() * 10) + 20 : cam.fps
+  //     })));
+  //   }, 3000);
+
+  //   return () => clearInterval(interval);
+  // }, []);
+
   return (
-    <div className="min-h-screen bg-[#0a0a0c] text-zinc-300 p-2 sm:p-6 font-mono selection:bg-pink-500/40">
-
-      {/* --- TOP HUD --- */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-4">
-        {/* Neon Logo */}
-        <div className="border-2 border-pink-500 p-3 rounded-md shadow-[0_0_15px_rgba(236,72,153,0.5)] bg-black/40">
-          <h1 className="text-3xl font-black italic tracking-tighter text-pink-500">
-            CINE-STREAM <span className="text-blue-400">1986</span>
-          </h1>
-          <p className="text-[10px] text-zinc-500 uppercase">Your Personal Movie Archive</p>
-        </div>
-
-        {/* Top Nav Tabs */}
-        <nav className="flex gap-4 bg-zinc-900/50 p-1 rounded-lg border border-white/5">
-          {['SHELF', 'STATS', 'WISHLIST', 'SETTINGS'].map((tab) => (
-            <button key={tab} className={`px-4 py-2 text-xs font-bold rounded-md transition-all ${tab === 'SHELF' ? 'bg-orange-600 text-white shadow-lg' : 'hover:bg-white/5'}`}>
-              {tab}
-            </button>
-          ))}
-        </nav>
-
-        {/* User Profile */}
-        <div className="hidden lg:flex items-center gap-3 bg-zinc-900/80 p-2 rounded-full border border-white/10">
-          <div className="text-right">
-            <p className="text-[10px] font-bold">MEMBER</p>
-            <p className="text-[9px] text-zinc-500">EST. 1986</p>
-          </div>
-          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-pink-500 to-yellow-500 border-2 border-white/20" />
-        </div>
-      </div>
-
-      <div className="flex flex-col lg:flex-row gap-6">
-
-        {/* --- LEFT SIDEBAR (STATS) --- */}
-        <aside className="w-full lg:w-64">
-          <div className="relative bg-[#0b0f1a] border border-white/10 rounded-md p-4 shadow-[inset_0_0_20px_rgba(0,0,0,0.8),0_10px_30px_rgba(0,0,0,0.5)]">
-
-            {/* Top Display */}
-            <div className="bg-[#111827] border border-white/10 rounded-md p-3 mb-4 text-center shadow-inner">
-              <div className="text-blue-400 text-[10px] tracking-widest uppercase">
-                Collection
-              </div>
-              <div className="text-white text-lg font-bold tracking-wider mt-1">
-                247 Tapes
-              </div>
-            </div>
-
-            {/* List */}
-            <ul className="space-y-2 text-[11px] font-bold tracking-wider">
-
-              {/* Active */}
-              <li className="flex justify-between items-center px-3 py-2 rounded-md 
-        bg-gradient-to-r from-orange-500/10 to-transparent 
-        border border-orange-500/20 
-        text-orange-400 shadow-[0_0_10px_rgba(255,140,0,0.2)]">
-
-                <span className="flex items-center gap-2 uppercase">
-                  ▶ ALL MOVIES
-                </span>
-                <span>247</span>
-              </li>
-
-              {/* Items */}
-              {[
-                { label: "Watching", value: 12 },
-                { label: "Completed", value: 198 },
-                { label: "On Hold", value: 8 },
-                { label: "Wishlist", value: 29 },
-                { label: "Favorites ♥", value: 23 },
-              ].map((item, i) => (
-                <li
-                  key={i}
-                  className="flex justify-between items-center px-3 py-2 rounded-md 
-          border border-white/5 
-          bg-[#0f172a] 
-          hover:bg-white/5 
-          hover:border-white/20 
-          transition-all duration-200 cursor-pointer"
-                >
-                  <span className="uppercase text-gray-300 tracking-wide">
-                    {item.label}
-                  </span>
-                  <span className="text-gray-400">{item.value}</span>
-                </li>
-              ))}
-
-            </ul>
-          </div>
-        </aside>
-        {/* <div className="bg-[#e2e2d8] p-3 -rotate-2 shadow-lg border border-black/10 text-black font-mono text-[9px] w-48 mx-auto lg:mx-0">
-          <p className="font-bold border-b border-black/20 pb-1 mb-1">STORE POLICY:</p>
-          <p>• LATE FEES: $1.00/DAY</p>
-          <p>• BE KIND, REWIND</p>
-        </div> */}
-        {/* --- THE MAIN SHELF AREA --- */}
-        <div className="flex-1 relative">
-
-          {/* Wooden Frame Wrapper */}
-          <div className="bg-[#2a1d15] p-2 sm:p-4 rounded-sm border-[10px] border-[#3d2b1f] shadow-[inset_0_0_50px_rgba(0,0,0,0.8),0_20px_40px_rgba(0,0,0,0.5)] overflow-hidden">
-
-            {/* Shelf Label */}
-            <div className="bg-[#4e3a2c] w-fit px-4 py-1 mx-auto text-[10px] font-bold text-orange-200/50 rounded-b-md mb-4 border border-white/5">
-              DRAMA / SCI-FI
-            </div>
-
-            {/* HORIZONTAL SCROLLING CONTAINER */}
-            <div className="flex gap-3 overflow-x-auto pb-8 pt-4 no-scrollbar snap-x scroll-smooth">
-              {TAPES.map((movie) => (
-                <VHSTape key={movie.id} movie={movie} />
-              ))}
-
-              {/* Add Movie Neon Slot */}
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                className="flex-shrink-0 w-24 sm:w-32 h-[350px] border-2 border-dashed border-pink-500/40 rounded flex flex-col items-center justify-center gap-4 bg-pink-500/5 group"
-              >
-                <div className="w-12 h-12 rounded-full border-2 border-pink-500 flex items-center justify-center shadow-[0_0_15px_rgba(236,72,153,0.5)] group-hover:scale-110 transition-transform">
-                  <Plus className="text-pink-500" />
+    <div className={`min-h-screen ${darkMode ? 'bg-gray-950 text-white' : 'bg-gray-50 text-gray-900'} transition-colors duration-300`}>
+      {/* Header */}
+      <header className={`sticky top-0 z-50 ${darkMode ? 'bg-gray-900/90' : 'bg-white/90'} backdrop-blur-xl border-b ${darkMode ? 'border-gray-800' : 'border-gray-200'} transition-colors`}>
+        <div className="px-6 py-4">
+          <div className="flex items-center justify-between">
+            {/* Left: Logo and breadcrumb */}
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-cyan-500 rounded-lg flex items-center justify-center">
+                  <Brain className="w-5 h-5 text-white" />
                 </div>
-                <span className="text-[10px] font-black text-pink-500 tracking-tighter">ADD MOVIE</span>
-              </motion.button>
+                <div>
+                  <h1 className="text-lg font-bold">Vision AI Studio</h1>
+                  <div className="flex items-center text-sm opacity-70">
+                    <span>Dashboard</span>
+                    <ChevronRight className="w-4 h-4 mx-1" />
+                    <span className="capitalize">{activeTab}</span>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            {/* Lower Wooden Ledge */}
-            <div className="h-4 w-full bg-[#1a110b] mt-[-10px] border-t border-white/5 rounded-sm shadow-inner" />
-          </div>
+            {/* Right: Search, notifications, user */}
+            <div className="flex items-center space-x-4">
+              {/* Search */}
+              <div className={`relative ${darkMode ? 'bg-gray-800' : 'bg-gray-100'} rounded-lg px-3 py-2`}>
+                <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 opacity-50" />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  className={`bg-transparent border-none outline-none pl-8 pr-4 w-48 ${darkMode ? 'text-white' : 'text-gray-900'}`}
+                />
+              </div>
 
-          {/* Device Footer Stats */}
-          <div className="mt-4 flex justify-between items-center font-mono text-[9px] text-zinc-600 px-2 uppercase">
-            <div className="flex gap-4">
-              <span>Store Hours: 10:00 - 11:00</span>
-              <span className="text-orange-900/50 italic">Be Kind Rewind</span>
-            </div>
-            <div className="flex gap-2 items-center">
-              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_5px_green]" />
-              <span>CINE-STREAM OS v1.986</span>
+              {/* Notifications */}
+              <div className="relative">
+                <button className={`p-2 rounded-lg ${darkMode ? 'hover:bg-gray-800' : 'hover:bg-gray-100'} transition-colors`}>
+                  <Bell className="w-5 h-5" />
+                  {notifications.filter(n => !n.read).length > 0 && (
+                    <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
+                  )}
+                </button>
+              </div>
+
+              {/* Fullscreen */}
+              <button
+                onClick={() => setFullscreen(!fullscreen)}
+                className={`p-2 rounded-lg ${darkMode ? 'hover:bg-gray-800' : 'hover:bg-gray-100'} transition-colors`}
+              >
+                {fullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
+              </button>
+
+              {/* Dark mode toggle */}
+              <button
+                onClick={() => setDarkMode(!darkMode)}
+                className={`p-2 rounded-lg ${darkMode ? 'hover:bg-gray-800' : 'hover:bg-gray-100'} transition-colors`}
+              >
+                {darkMode ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
+
+              {/* User profile */}
+              <div className="flex items-center space-x-3">
+                <div className={`p-2 rounded-lg ${darkMode ? 'bg-gray-800' : 'bg-gray-100'}`}>
+                  <User className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="text-sm font-medium">John Doe</div>
+                  <div className="text-xs opacity-70">Admin</div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
+      </header>
 
+      <div className="flex">
+        {/* Sidebar */}
+        <aside className={`${sidebarCollapsed ? 'w-20' : 'w-64'} ${darkMode ? 'bg-gray-900' : 'bg-white'} border-r ${darkMode ? 'border-gray-800' : 'border-gray-200'} transition-all duration-300 h-[calc(100vh-73px)] sticky top-[73px]`}>
+          <nav className="p-4">
+            <div className="space-y-2">
+              {[
+                { id: 'overview', label: 'Overview', icon: BarChart3 },
+                { id: 'cameras', label: 'Cameras', icon: Camera },
+                { id: 'models', label: 'AI Models', icon: Brain },
+                { id: 'training', label: 'Training', icon: Activity },
+                { id: 'inference', label: 'Inference', icon: Zap },
+                { id: 'analytics', label: 'Analytics', icon: LineChart },
+                { id: 'alerts', label: 'Alerts', icon: AlertTriangle },
+                { id: 'settings', label: 'Settings', icon: Settings },
+              ].map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id)}
+                  className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-start'} space-x-3 px-3 py-3 rounded-lg transition-all ${activeTab === item.id
+                    ? 'bg-gradient-to-r from-blue-600/20 to-cyan-500/20 text-blue-400 border border-blue-500/30'
+                    : `${darkMode ? 'hover:bg-gray-800' : 'hover:bg-gray-100'}`
+                    }`}
+                >
+                  <item.icon className="w-5 h-5" />
+                  {!sidebarCollapsed && <span>{item.label}</span>}
+                </button>
+              ))}
+            </div>
+
+            {/* Collapse button */}
+            <button
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className={`absolute bottom-4 ${sidebarCollapsed ? 'left-1/2 transform -translate-x-1/2' : 'right-4'} p-2 rounded-lg ${darkMode ? 'bg-gray-800' : 'bg-gray-100'}`}
+            >
+              {sidebarCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
+            </button>
+          </nav>
+        </aside>
+
+        {/* Main Content */}
+        <main className="flex-1 p-6">
+          {/* Stats Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {stats.map((stat, index) => (
+              <motion.div
+                key={stat.label}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+                className={`rounded-2xl p-6 ${darkMode ? 'bg-gray-900/50' : 'bg-white'} border ${darkMode ? 'border-gray-800' : 'border-gray-200'}`}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className={`p-3 rounded-xl ${darkMode ? 'bg-gray-800' : 'bg-gray-100'}`}>
+                    <stat.icon className="w-6 h-6" />
+                  </div>
+                  <div className={`flex items-center px-2 py-1 rounded-lg ${stat.trend === 'up' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                    {stat.trend === 'up' ? <ArrowUpRight className="w-4 h-4 mr-1" /> : <ArrowDownRight className="w-4 h-4 mr-1" />}
+                    {stat.change}
+                  </div>
+                </div>
+                <div className="text-3xl font-bold mb-1">{stat.value}</div>
+                <div className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{stat.label}</div>
+              </motion.div>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left Column - Camera Feed */}
+            <div className="lg:col-span-2">
+              {/* Live Camera Feed */}
+              <div className={`rounded-2xl p-6 ${darkMode ? 'bg-gray-900/50' : 'bg-white'} border ${darkMode ? 'border-gray-800' : 'border-gray-200'} mb-6`}>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-bold">Live Camera Feed</h2>
+                  <div className="flex items-center space-x-2">
+                    <button className="p-2 rounded-lg bg-blue-600 text-white">
+                      <Play className="w-5 h-5" />
+                    </button>
+                    <button className={`p-2 rounded-lg ${darkMode ? 'bg-gray-800' : 'bg-gray-100'}`}>
+                      <Pause className="w-5 h-5" />
+                    </button>
+                    <button className={`p-2 rounded-lg ${darkMode ? 'bg-gray-800' : 'bg-gray-100'}`}>
+                      <Maximize2 className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Camera View */}
+                <div className="relative bg-black rounded-xl overflow-hidden mb-6">
+                  <div className="aspect-video relative">
+                    {/* Simulated camera feed */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 to-purple-900/20" />
+
+                    {/* Animated ROIs */}
+                    <motion.div
+                      animate={{
+                        borderColor: ['#3b82f6', '#8b5cf6', '#3b82f6']
+                      }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                      className="absolute top-8 left-8 w-32 h-24 border-2 border-blue-500 rounded-lg"
+                    >
+                      <div className="absolute -top-6 left-0 px-2 py-1 bg-blue-600 rounded text-xs text-white">
+                        Entrance
+                      </div>
+                    </motion.div>
+
+                    {/* Detection indicator */}
+                    <motion.div
+                      animate={{
+                        scale: [1, 1.2, 1],
+                        opacity: [0.7, 1, 0.7]
+                      }}
+                      transition={{ duration: 1.5, repeat: Infinity, delay: 1 }}
+                      className="absolute bottom-12 right-12 w-12 h-12 border-2 border-red-500 rounded-full"
+                    >
+                      <AlertTriangle className="absolute -top-1 -right-1 w-4 h-4 text-red-500" />
+                    </motion.div>
+
+                    {/* Stats overlay */}
+                    <div className="absolute bottom-4 left-4 bg-black/70 rounded-lg p-3">
+                      <div className="text-sm">
+                        <div className="font-semibold text-white">Camera #1</div>
+                        <div className="flex items-center text-green-400">
+                          <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse" />
+                          32 FPS • 24ms
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Camera Grid */}
+                <div className="grid grid-cols-4 gap-4">
+                  {cameras.map((camera, index) => (
+                    <button
+                      key={camera.id}
+                      onClick={() => setActiveCamera(index)}
+                      className={`relative rounded-xl overflow-hidden aspect-video ${activeCamera === index ? 'ring-2 ring-blue-500' : ''
+                        }`}
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900" />
+                      <div className="absolute top-2 left-2">
+                        <div className={`w-2 h-2 rounded-full ${camera.status === 'active' ? 'bg-green-500' :
+                          camera.status === 'warning' ? 'bg-yellow-500' :
+                            'bg-gray-500'
+                          }`} />
+                      </div>
+                      <div className="absolute bottom-2 left-2 right-2">
+                        <div className="text-xs font-medium truncate">{camera.name}</div>
+                        <div className="text-xs opacity-70">{camera.fps} FPS</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Recent Activity */}
+              <div className={`rounded-2xl p-6 ${darkMode ? 'bg-gray-900/50' : 'bg-white'} border ${darkMode ? 'border-gray-800' : 'border-gray-200'}`}>
+                <h2 className="text-xl font-bold mb-6">Recent Activity</h2>
+                <div className="space-y-4">
+                  {activityLog.map((activity, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-gray-800/30">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center">
+                          <Clock className="w-4 h-4 text-blue-400" />
+                        </div>
+                        <div>
+                          <div className="font-medium">{activity.action}</div>
+                          <div className="text-sm opacity-70">by {activity.user}</div>
+                        </div>
+                      </div>
+                      <div className="text-sm opacity-70">{activity.time}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column */}
+            <div>
+              {/* Models Status */}
+              <div className={`rounded-2xl p-6 ${darkMode ? 'bg-gray-900/50' : 'bg-white'} border ${darkMode ? 'border-gray-800' : 'border-gray-200'} mb-6`}>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-bold">AI Models</h2>
+                  <button className="p-2 rounded-lg bg-gradient-to-r from-blue-600 to-cyan-500 text-white">
+                    <Plus className="w-5 h-5" />
+                  </button>
+                </div>
+                <div className="space-y-4">
+                  {models.map((model) => (
+                    <div key={model.id} className="p-4 rounded-xl bg-gray-800/30">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="font-medium">{model.name}</div>
+                        <div className={`px-2 py-1 rounded-lg text-xs ${model.status === 'deployed' ? 'bg-green-500/20 text-green-400' :
+                          model.status === 'training' ? 'bg-blue-500/20 text-blue-400' :
+                            'bg-yellow-500/20 text-yellow-400'
+                          }`}>
+                          {model.status}
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="opacity-70">Accuracy: {model.accuracy}%</div>
+                        <div className="opacity-70">{model.lastTrained}</div>
+                      </div>
+                      <div className="mt-3">
+                        <div className="h-1 w-full bg-gray-700 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-blue-500 to-cyan-500"
+                            style={{ width: `${model.accuracy}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* System Status */}
+              <div className={`rounded-2xl p-6 ${darkMode ? 'bg-gray-900/50' : 'bg-white'} border ${darkMode ? 'border-gray-800' : 'border-gray-200'} mb-6`}>
+                <h2 className="text-xl font-bold mb-6">System Status</h2>
+                <div className="space-y-4">
+                  {[
+                    { label: 'CPU Usage', value: '42%', icon: Cpu, color: 'text-blue-400' },
+                    { label: 'Memory', value: '3.2/8GB', icon: HardDrive, color: 'text-green-400' },
+                    { label: 'Network', value: '125 Mbps', icon: Wifi, color: 'text-purple-400' },
+                    { label: 'GPU', value: '68%', icon: Server, color: 'text-yellow-400' },
+                  ].map((item) => (
+                    <div key={item.label} className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <item.icon className={`w-5 h-5 ${item.color}`} />
+                        <span>{item.label}</span>
+                      </div>
+                      <span className="font-medium">{item.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Quick Actions */}
+              <div className={`rounded-2xl p-6 ${darkMode ? 'bg-gray-900/50' : 'bg-white'} border ${darkMode ? 'border-gray-800' : 'border-gray-200'}`}>
+                <h2 className="text-xl font-bold mb-6">Quick Actions</h2>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { label: 'New Model', icon: Brain, color: 'from-blue-600 to-cyan-500' },
+                    { label: 'Add Camera', icon: Camera, color: 'from-purple-600 to-pink-500' },
+                    { label: 'Run Training', icon: Activity, color: 'from-green-600 to-emerald-500' },
+                    { label: 'Export Data', icon: Download, color: 'from-yellow-600 to-orange-500' },
+                  ].map((action) => (
+                    <button
+                      key={action.label}
+                      className={`aspect-square rounded-xl bg-gradient-to-br ${action.color} p-4 flex flex-col items-center justify-center text-white`}
+                    >
+                      <action.icon className="w-6 h-6 mb-2" />
+                      <span className="text-sm font-medium">{action.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
       </div>
+
+      {/* Notifications Panel */}
+      <AnimatePresence>
+        {false && ( // Set to true to show notifications panel
+          <motion.div
+            initial={{ opacity: 0, x: 100 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 100 }}
+            className="fixed right-0 top-0 bottom-0 w-96 bg-gray-900 border-l border-gray-800 shadow-2xl z-50"
+          >
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-bold">Notifications</h3>
+                <button className="p-2 rounded-lg hover:bg-gray-800">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="space-y-4">
+                {notifications.map((notification) => (
+                  <div
+                    key={notification.id}
+                    className={`p-4 rounded-xl ${notification.read ? 'bg-gray-800/30' : 'bg-blue-500/10'} border border-gray-700/50`}
+                  >
+                    <div className="flex items-start space-x-3">
+                      <div className={`p-2 rounded-lg ${notification.type === 'alert' ? 'bg-red-500/20' :
+                        notification.type === 'success' ? 'bg-green-500/20' :
+                          'bg-blue-500/20'
+                        }`}>
+                        {notification.type === 'alert' ? <AlertTriangle className="w-5 h-5 text-red-400" /> :
+                          notification.type === 'success' ? <CheckCircle className="w-5 h-5 text-green-400" /> :
+                            <Bell className="w-5 h-5 text-blue-400" />}
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-medium">{notification.message}</div>
+                        <div className="text-sm opacity-70 mt-1">{notification.time}</div>
+                      </div>
+                      {!notification.read && (
+                        <div className="w-2 h-2 bg-blue-500 rounded-full" />
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Floating Add Button */}
+      <button className="fixed bottom-8 right-8 z-40 p-4 bg-gradient-to-r from-blue-600 to-cyan-500 rounded-full shadow-2xl hover:shadow-blue-500/30 transition-all duration-300">
+        <Plus className="w-6 h-6 text-white" />
+      </button>
     </div>
   );
 }
 
-// --- VHSTAPE COMPONENT ---
-function VHSTape({ movie }: { movie: any }) {
-  return (
-    <motion.div
-      whileHover={{ y: -10 }}
-      className="flex-shrink-0 w-16 sm:w-20 lg:w-24 h-[350px] bg-[#121214] border-l-4 border-zinc-800 shadow-[10px_0_20px_rgba(0,0,0,0.5)] relative snap-start group"
-    >
-      {/* Tape Top Details */}
-      <div className="h-10 w-full border-b border-white/5 p-1">
-        <div className="w-full h-1 bg-zinc-800 rounded-full" />
-      </div>
+// Add missing icon
+const ChevronLeft = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+  </svg>
+);
 
-      {/* Vertical Spine Title */}
-      <div className="absolute inset-0 flex items-center justify-center pt-12 pb-20 pointer-events-none">
-        <span className="text-zinc-400 group-hover:text-white transition-colors font-black text-xs sm:text-sm tracking-tighter [writing-mode:vertical-rl] rotate-180 uppercase">
-          {movie.title}
-        </span>
-      </div>
-
-      {/* Bottom Progress Area */}
-      <div className="absolute bottom-0 left-0 right-0 p-2 space-y-2 bg-gradient-to-t from-black to-transparent">
-        {/* Glow Bar */}
-        <div className="h-16 w-full bg-zinc-900 rounded-sm relative overflow-hidden flex items-end p-[2px]">
-          <motion.div
-            initial={{ height: 0 }}
-            animate={{ height: `${movie.progress}%` }}
-            className="w-full bg-gradient-to-t from-orange-600 to-orange-400 shadow-[0_0_15px_#ea580c] rounded-sm"
-          />
-        </div>
-        {/* Percent Text */}
-        <div className="text-[10px] text-center font-bold text-orange-500/80">
-          {movie.progress}%
-        </div>
-        <div className="text-[8px] text-center text-zinc-600 font-bold">VHS</div>
-      </div>
-    </motion.div>
-  );
-}
