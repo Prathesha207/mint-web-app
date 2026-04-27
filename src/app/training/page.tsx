@@ -185,7 +185,7 @@ export default function TrainingPage() {
   // Colors
   const roiColors = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#6366f1', '#06b6d4', '#f97316'];
 
-  const NEXT_PUBLIC_BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'games-measure-gap-rows.trycloudflare.com';
+  const NEXT_PUBLIC_BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'losses-harris-homework-roll.trycloudflare.com';
 
   // Helper functions
   const renderProgressBar = (percent: number, width = 20) => {

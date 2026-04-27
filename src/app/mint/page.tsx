@@ -740,7 +740,7 @@ export default function TrainingContent() {
     setExtractionLogs(prev => [...prev, logMessage]);
   }, []);
 
-  const NEXT_PUBLIC_BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'games-measure-gap-rows.trycloudflare.com';
+  const NEXT_PUBLIC_BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'losses-harris-homework-roll.trycloudflare.com';
 
   const backendHttpBase = useMemo(() => {
     const normalized = NEXT_PUBLIC_BACKEND_URL.trim().replace(/\/$/, '');
