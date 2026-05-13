@@ -4,18 +4,13 @@ import React, {
   memo,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   type CSSProperties,
   type RefObject,
   type UIEvent,
 } from 'react'
-import {
-  List,
-  type ListImperativeAPI,
-  type RowComponentProps,
-  useDynamicRowHeight,
-} from 'react-window'
 
 interface TerminalProps {
   terminalLogs: string[]
@@ -24,15 +19,13 @@ interface TerminalProps {
   compact?: boolean
 }
 
-interface TerminalRowData {
-  logs: string[]
+interface TerminalRowProps {
+  log: string
   rowClassName: string
 }
 
 const EMPTY_MESSAGE = 'No logs yet. Start recording or training to see logs here.'
 const AUTO_SCROLL_THRESHOLD = 48
-const COMPACT_ROW_HEIGHT = 20
-const ROW_HEIGHT = 24
 
 function getLogColorClass(log: string) {
   const normalizedLog = log.toUpperCase()
@@ -63,37 +56,20 @@ function isScrolledNearBottom(element: HTMLDivElement) {
   return element.scrollHeight - element.scrollTop - element.clientHeight <= AUTO_SCROLL_THRESHOLD
 }
 
-function TerminalRow({
-  ariaAttributes,
-  index,
-  logs,
-  rowClassName,
-  style,
-}: RowComponentProps<TerminalRowData>) {
-  const log = logs[index] ?? ''
-
+const TerminalRow = memo(function TerminalRow({ log, rowClassName }: TerminalRowProps) {
   return (
-    <div
-      {...ariaAttributes}
-      style={style}
-      className={`${rowClassName} ${getLogColorClass(log)}`}
-    >
+    <div className={`${rowClassName} ${getLogColorClass(log)}`}>
       <span className="shrink-0 select-none text-sky-500/55">{'\u203a'}</span>
       <span className="min-w-0 flex-1 whitespace-pre-wrap break-words  text-left [overflow-wrap:anywhere]">
         {log}
       </span>
     </div>
   )
-}
+})
 
 function Terminal({ terminalLogs, terminalRef, className = '', compact = false }: TerminalProps) {
-  const listRef = useRef<ListImperativeAPI | null>(null)
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null)
   const shouldFollowTailRef = useRef(true)
-  const firstLog = terminalLogs[0] ?? ''
-  const rowHeight = useDynamicRowHeight({
-    defaultRowHeight: compact ? COMPACT_ROW_HEIGHT : ROW_HEIGHT,
-    key: `${compact ? 'compact' : 'regular'}-${firstLog}`,
-  })
   const rowClassName = useMemo(
     () =>
       [
@@ -103,42 +79,31 @@ function Terminal({ terminalLogs, terminalRef, className = '', compact = false }
       ].join(' '),
     [compact],
   )
-  const rowProps = useMemo(
-    () => ({ logs: terminalLogs, rowClassName }),
-    [rowClassName, terminalLogs],
-  )
-  const listStyle = useMemo<CSSProperties>(
+  const scrollContainerStyle = useMemo<CSSProperties>(
     () => ({
       height: '100%',
+      overflowAnchor: 'none',
       overflowX: 'hidden',
       overflowY: 'auto',
       scrollbarGutter: 'stable',
+      scrollBehavior: 'auto',
       width: '100%',
     }),
     [],
   )
 
   const scrollToLatestLog = useCallback(() => {
-    if (terminalLogs.length === 0) return
+    const element = scrollContainerRef.current
+    if (!element) return
 
-    listRef.current?.scrollToRow({
-      align: 'end',
-      behavior: 'auto',
-      index: terminalLogs.length - 1,
-    })
-  }, [terminalLogs.length])
+    element.scrollTop = element.scrollHeight
+  }, [])
 
   const handleScroll = useCallback((event: UIEvent<HTMLDivElement>) => {
     shouldFollowTailRef.current = isScrolledNearBottom(event.currentTarget)
   }, [])
 
-  const handleResize = useCallback(() => {
-    if (shouldFollowTailRef.current) {
-      scrollToLatestLog()
-    }
-  }, [scrollToLatestLog])
-
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (terminalLogs.length === 0) {
       shouldFollowTailRef.current = true
       return
@@ -146,10 +111,23 @@ function Terminal({ terminalLogs, terminalRef, className = '', compact = false }
 
     if (!shouldFollowTailRef.current) return
 
-    const animationFrame = window.requestAnimationFrame(scrollToLatestLog)
+    scrollToLatestLog()
+  }, [scrollToLatestLog, terminalLogs])
 
-    return () => window.cancelAnimationFrame(animationFrame)
-  }, [scrollToLatestLog, terminalLogs.length])
+  useEffect(() => {
+    const element = scrollContainerRef.current
+    if (!element || typeof ResizeObserver === 'undefined') return
+
+    const resizeObserver = new ResizeObserver(() => {
+      if (shouldFollowTailRef.current) {
+        scrollToLatestLog()
+      }
+    })
+
+    resizeObserver.observe(element)
+
+    return () => resizeObserver.disconnect()
+  }, [scrollToLatestLog])
 
   return (
     <div
@@ -157,22 +135,26 @@ function Terminal({ terminalLogs, terminalRef, className = '', compact = false }
       className={`min-h-0 min-w-0 flex-1 overflow-hidden bg-black/50 font-mono leading-relaxed ${className}`}
     >
       {terminalLogs.length > 0 ? (
-        <List
+        <div
           aria-label="Terminal output"
-          className="custom-scrollbar scroll-smooth overscroll-contain overflow-x-hidden overflow-y-auto [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-zinc-600 [&::-webkit-scrollbar-thumb:hover]:bg-sky-500/70 [&::-webkit-scrollbar-track]:bg-zinc-950/80"
-          defaultHeight={400}
-          listRef={listRef}
-          onResize={handleResize}
+          className="custom-scrollbar overscroll-contain overflow-x-hidden overflow-y-auto [scrollbar-width:thin] [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-zinc-600 [&::-webkit-scrollbar-thumb:hover]:bg-sky-500/70 [&::-webkit-scrollbar-track]:bg-zinc-950/80"
           onScroll={handleScroll}
-          overscanCount={8}
-          rowComponent={TerminalRow}
-          rowCount={terminalLogs.length}
-          rowHeight={rowHeight}
-          rowProps={rowProps}
-          style={listStyle}
-        />
+          ref={scrollContainerRef}
+          role="log"
+          style={scrollContainerStyle}
+        >
+          <div className="min-w-full py-1">
+            {terminalLogs.map((log, index) => (
+              <TerminalRow
+                key={index}
+                log={log}
+                rowClassName={rowClassName}
+              />
+            ))}
+          </div>
+        </div>
       ) : (
-          <div className="flex h-full min-h-24 items-start justify-start p-4 text-left font-mono text-[10px] italic leading-relaxed text-zinc-600">
+        <div className="flex h-full min-h-24 items-start justify-start p-4 text-left font-mono text-[10px] italic leading-relaxed text-zinc-600">
           {EMPTY_MESSAGE}
         </div>
       )}
