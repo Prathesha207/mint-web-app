@@ -63,7 +63,7 @@ export default function MobileCameraClient() {
       : 'Open this page from the mint QR code so the phone knows which session to join.');
 
   const backendHttpBase = useMemo(
-    () => getBackendHttpBase(process.env.NEXT_PUBLIC_BACKEND_URL || 'losses-harris-homework-roll.trycloudflare.com'),
+    () => getBackendHttpBase(process.env.NEXT_PUBLIC_BACKEND_URL || 'projected-records-title-celebration.trycloudflare.com'),
     []
   );
 

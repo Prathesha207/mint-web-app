@@ -18,7 +18,7 @@ import {
 export default function AuthPage() {
 
   const router = useRouter()
-  const NEXT_PUBLIC_BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'losses-harris-homework-roll.trycloudflare.com'
+  const NEXT_PUBLIC_BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'projected-records-title-celebration.trycloudflare.com'
 
   const [isLogin, setIsLogin] = useState(true)
   const [loading, setLoading] = useState(false)

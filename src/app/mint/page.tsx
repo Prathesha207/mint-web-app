@@ -842,7 +842,7 @@ export default function TrainingContent() {
     };
   }, []);
 
-  const NEXT_PUBLIC_BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'losses-harris-homework-roll.trycloudflare.com';
+  const NEXT_PUBLIC_BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'projected-records-title-celebration.trycloudflare.com';
 
   const backendHttpBase = useMemo(() => {
     const normalized = NEXT_PUBLIC_BACKEND_URL.trim().replace(/\/$/, '');
